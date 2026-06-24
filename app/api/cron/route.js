@@ -2,92 +2,66 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { sendTelegramMessage } from "@/lib/telegram";
 
-// Call this endpoint every few minutes from Vercel Cron (vercel.json) OR
-// an external scheduler like https://cron-job.org (recommended on the
-// Vercel Hobby plan, since Hobby cron only runs once per day).
-// Protect with: ?secret=CRON_SECRET or header  x-cron-secret: CRON_SECRET
-
-const TOLERANCE_MIN = 3; // minutes of tolerance around the run interval
-
-function parseTimeToMinutes(t) {
-  const [h, m] = (t || "00:00").split(":").map(Number);
-  return h * 60 + m;
-}
-
 export async function GET(request) {
   const url = new URL(request.url);
   const secret = url.searchParams.get("secret") || request.headers.get("x-cron-secret");
+
+  // ១. ពិនិត្យសុវត្ថិភាព Cron Secret
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const admin = createAdminClient();
-  const { data: settings } = await admin.from("telegram_settings").select("*").eq("id", 1).maybeSingle();
+  try {
+    const supabase = createAdminClient();
 
-  if (!settings?.bot_token || !settings?.chat_id) {
-    return NextResponse.json({ skipped: "no telegram settings configured" });
-  }
+    // ២. ចាប់យកកាលបរិច្ឆេទ និងម៉ោងបច្ចុប្បន្ននៅកម្ពុជា (GMT+7)
+    const now = new Date();
+    const cambodiaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Phnom_Penh" }));
+    
+    // បំប្លែងទៅជាទម្រង់ YYYY-MM-DD និង HH:mm (ឧទាហរណ៍៖ "2026-06-24" និង "09:00")
+    const currentDateStr = cambodiaTime.toISOString().split('T')[0];
+    const currentTimeStr = cambodiaTime.toTimeString().split(' ')[0].substring(0, 5);
 
-  const { data: tasks } = await admin.from("tasks").select("*").eq("done", false);
+    console.log(Running cron check for Cambodia Time: ${currentDateStr} ${currentTimeStr});
 
-  const now = new Date();
-  let sent = 0;
+    // ៣. ទាញយក Task ណាដែលត្រូវនឹង៖ ថ្ងៃនេះ + ម៉ោងនេះ + មិនទាន់បានរំលឹក (reminded_same_day = false)
+    const { data: tasks, error } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("date", currentDateStr)
+      .eq("time", currentTimeStr)
+      .eq("reminded_same_day", false);
 
-  for (const t of tasks || []) {
-    const taskDateTimeMin = parseTimeToMinutes(t.time);
-    const taskDate = new Date(t.date + "T00:00:00");
+    if (error) throw error;
 
-    // ---- Same-day reminder ----
-    if (!t.reminded_same_day) {
-      const triggerDate = new Date(taskDate);
-      const triggerMin = taskDateTimeMin - (t.remind_same_day || 0);
-      triggerDate.setMinutes(triggerDate.getMinutes() + triggerMin);
+    let sentCount = 0;
 
-      const diffMin = Math.abs((now - triggerDate) / 60000);
-      if (diffMin <= TOLERANCE_MIN && now >= new Date(triggerDate.getTime() - TOLERANCE_MIN * 60000)) {
-        try {
-          await sendTelegramMessage(
-            settings.bot_token,
-            settings.chat_id,
-            `🔔 <b>ការរំលឹកកិច្ចការ</b>\n${t.title}\n⏰ ម៉ោង ${t.time} | 📅 ${t.date}`
-          );
-          await admin.from("tasks").update({ reminded_same_day: true }).eq("id", t.id);
-          sent++;
-        } catch (e) {
-          console.error("telegram send failed", e.message);
-        }
+    // ៤. ប្រសិនបើឃើញមាន Task ដល់ម៉ោង ត្រូវផ្ញើសារទៅ Telegram
+    if (tasks && tasks.length > 0) {
+      for (const task of tasks) {
+        const message = 🔔 **ការរំលឹកកិច្ចការងារ!**\n\n📌 **កិច្ចការ៖** ${task.title}\n⏰ **ម៉ោង៖** ${task.time}\n📅 **កាលបរិច្ឆេទ៖** ${task.date};
+        
+        // ហៅទៅមុខងារផ្ញើសារដែលមានស្រាប់ក្នុងប្រព័ន្ធរបស់អ្នក
+        await sendTelegramMessage(message);
+
+        // ៥. បច្ចុប្បន្នភាព狀況ទៅជា true ដើម្បីកុំឱ្យផ្ញើជាន់គ្នានៅនាទីបន្ទាប់
+        await supabase
+          .from("tasks")
+          .update({ reminded_same_day: true })
+          .eq("id", task.id);
+
+        sentCount++;
       }
     }
 
-    // ---- Day-before reminder ----
-    if (t.remind_day_before && t.remind_day_before !== "none" && !t.reminded_day_before) {
-      let triggerDate;
-      if (t.remind_day_before === "0") {
-        triggerDate = new Date(taskDate);
-        triggerDate.setDate(triggerDate.getDate() - 1);
-        triggerDate.setHours(7, 0, 0, 0);
-      } else {
-        const offsetMin = parseInt(t.remind_day_before, 10); // negative
-        triggerDate = new Date(taskDate);
-        triggerDate.setMinutes(triggerDate.getMinutes() + taskDateTimeMin + offsetMin);
-      }
+    return NextResponse.json({ 
+      success: true, 
+      message: ពិនិត្យរួចរាល់។ បានផ្ញើសាររំលឹកចំនួន ${sentCount} កិច្ចការ។,
+      time_checked: ${currentDateStr} ${currentTimeStr}
+    }, { status: 200 });
 
-      const diffMin = Math.abs((now - triggerDate) / 60000);
-      if (diffMin <= TOLERANCE_MIN && now >= new Date(triggerDate.getTime() - TOLERANCE_MIN * 60000)) {
-        try {
-          await sendTelegramMessage(
-            settings.bot_token,
-            settings.chat_id,
-            `📌 <b>រំលឹកមុនថ្ងៃ</b>\n${t.title}\nមានកំណត់ម៉ោង ${t.time} | 📅 ${t.date}`
-          );
-          await admin.from("tasks").update({ reminded_day_before: true }).eq("id", t.id);
-          sent++;
-        } catch (e) {
-          console.error("telegram send failed", e.message);
-        }
-      }
-    }
+  } catch (error) {
+    console.error("Cron Error:", error.message);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
-
-  return NextResponse.json({ ok: true, checked: tasks?.length || 0, sent });
 }
