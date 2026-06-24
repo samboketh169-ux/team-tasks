@@ -24,11 +24,11 @@ export async function GET(request) {
   try {
     const supabase = createAdminClient();
 
-    // ១. ចាប់យកម៉ោង UTC របស់ Server រួចបូកថែម ៧ ម៉ោងដើម្បីឱ្យទៅជាម៉ោងកម្ពុជា
+    // ១. គណនាម៉ោងកម្ពុជា (UTC + 7 ម៉ោង) ដើម្បីកុំឱ្យខុសល្វែងម៉ោងរបស់ Server
     const utcNow = new Date();
     const cambodiaTime = new Date(utcNow.getTime() + (7 * 60 * 60 * 1000));
     
-    // បង្កើត String ថ្ងៃខែទម្រង់ YYYY-MM-DD ឱ្យត្រូវនឹងម៉ោងកម្ពុជាថ្មី
+    // បង្កើត String ថ្ងៃខែទម្រង់ YYYY-MM-DD
     const currentDateStr = cambodiaTime.toISOString().split('T')[0];
     
     // ចាប់យកម៉ោង និងនាទីជាលេខដាច់ដោយឡែក
@@ -41,7 +41,7 @@ export async function GET(request) {
     const displayMinutes = String(minutesNum).padStart(2, '0');
     const cambodiaTimeLog = ${displayHours}:${displayMinutes};
 
-    console.log([OK] Checking for Cambodia Date: ${currentDateStr}, Time: ${cambodiaTimeLog});
+    console.log([CRON] Checking Date: ${currentDateStr}, Time: ${cambodiaTimeLog});
 
     // ២. ទាញយកកិច្ចការទាំងអស់របស់ថ្ងៃនេះ ដែលមិនទាន់បានរំលឹក
     const { data: tasks, error } = await supabase
@@ -58,7 +58,7 @@ export async function GET(request) {
       for (const task of tasks) {
         const dbMinutes = timeToMinutes(task.time);
 
-        // ៣. ផ្ទៀងផ្ទាត់៖ បើនាទីក្នុង DB ត្រូវគ្នានឹងម៉ោងបច្ចុប្បន្ន (លំអៀងមិនលើសពី ១ នាទី)
+        // ៣. ផ្ទៀងផ្ទាត់៖ បើនាទីក្នុង Database ត្រូវគ្នានឹងម៉ោងបច្ចុប្បន្ន (លំអៀងមិនលើសពី ១ នាទី)
         if (dbMinutes !== -1 && Math.abs(currentMinutes - dbMinutes) <= 1) {
           
           const message = 🔔 **ការរំលឹកកិច្ចការងារ!**\n\n📌 **កិច្ចការ៖** ${task.title}\n⏰ **ម៉ោង៖** ${task.time}\n📅 **កាលបរិច្ឆេទ៖** ${task.date};
