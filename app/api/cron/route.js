@@ -2,6 +2,19 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { sendTelegramMessage } from "@/lib/telegram";
 
+// មុខងារសម្រាប់បំប្លែងម៉ោងជាអក្សរ (ដូចជា "09:00", "9:05", "10:19") ទៅជានាទីសរុប
+function timeToMinutes(timeStr) {
+  if (!timeStr) return -1;
+  // ដកឃ្លា និងសម្អាតអក្សរ បើមាន
+  const cleanTime = timeStr.trim().replace(/[^0-9:]/g, "");
+  const parts = cleanTime.split(":");
+  if (parts.length < 2) return -1;
+  
+  const hours = parseInt(parts[0], 10);
+  const minutes = parseInt(parts[1], 10);
+  return (hours * 60) + minutes;
+}
+
 export async function GET(request) {
   const url = new URL(request.url);
   const secret = url.searchParams.get("secret") || request.headers.get("x-cron-secret");
@@ -13,19 +26,15 @@ export async function GET(request) {
   try {
     const supabase = createAdminClient();
 
-    // ១. ចាប់យកម៉ោងបច្ចុប្បន្ននៅកម្ពុជា (GMT+7)
+    // ១. ចាប់យកកាលបរិច្ឆេទ និងម៉ោងបច្ចុប្បន្ននៅកម្ពុជា (GMT+7)
     const now = new Date();
     const cambodiaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Phnom_Penh" }));
     
-    // បំលែងជាថ្ងៃខែ ទម្រង់ "YYYY-MM-DD"
+    // ទម្រង់ថ្ងៃខែ៖ YYYY-MM-DD
     const currentDateStr = cambodiaTime.toISOString().split('T')[0];
     
-    // ចាប់យកម៉ោង និងនាទីឱ្យចំទម្រង់ "HH:mm" (ឧទាហរណ៍៖ "10:19" ឬ "09:00")
-    const hours = String(cambodiaTime.getHours()).padStart(2, '0');
-    const minutes = String(cambodiaTime.getMinutes()).padStart(2, '0');
-    const currentTimeStr = ${hours}:${minutes};
-
-    console.log(Checking tasks for Cambodia Time: ${currentDateStr} ${currentTimeStr});
+    // គណនានាទីសរុបនៃម៉ោងបច្ចុប្បន្ននៅកម្ពុជា
+    const currentMinutes = (cambodiaTime.getHours() * 60) + cambodiaTime.getMinutes();
 
     // ២. ទាញយកកិច្ចការទាំងអស់របស់ថ្ងៃនេះ ដែលមិនទាន់បានរំលឹក
     const { data: tasks, error } = await supabase
@@ -40,17 +49,17 @@ export async function GET(request) {
 
     if (tasks && tasks.length > 0) {
       for (const task of tasks) {
-        // លុបចន្លោះទំនេរ បើមាន (ឧទាហរណ៍៖ "10:19 " -> "10:19")
-        const dbTime = task.time.trim();
+        const dbMinutes = timeToMinutes(task.time);
 
-        // ៣. ផ្ទៀងផ្ទាត់បើម៉ោងក្នុង Database ត្រូវគ្នានឹងម៉ោងបច្ចុប្បន្នពិតប្រាកដ
-        if (dbTime === currentTimeStr) {
+        // ៣. ផ្ទៀងផ្ទាត់៖ ប្រសិនបើម៉ោងបច្ចុប្បន្ន ត្រូវគ្នានឹងម៉ោងក្នុង Database (ខុសគ្នាមិនលើសពី ១ នាទី)
+        if (dbMinutes !== -1 && Math.abs(currentMinutes - dbMinutes) <= 1) {
+          
           const message = 🔔 **ការរំលឹកកិច្ចការងារ!**\n\n📌 **កិច្ចការ៖** ${task.title}\n⏰ **ម៉ោង៖** ${task.time}\n📅 **កាលបរិច្ឆេទ៖** ${task.date};
           
-          // ផ្ញើសារទៅ Telegram
+          // ផ្ញើសារទៅកាន់ Telegram លក្ខណៈស្វ័យប្រវត្តតាមម៉ោងកំណត់
           await sendTelegramMessage(message);
 
-          // ៤. កត់ត្រាក្នុង Database ថាបានផ្ញើរួចរាល់
+          // ៤. កត់ត្រាក្នុង Database ថាបានផ្ញើរួចរាល់ ដើម្បីកុំឱ្យផ្ញើជាន់គ្នាទៀត
           await supabase
             .from("tasks")
             .update({ reminded_same_day: true })
@@ -65,7 +74,7 @@ export async function GET(request) {
       ok: true, 
       checked: tasks?.length || 0, 
       sent: sentCount,
-      cambodia_time: ${currentDateStr} ${currentTimeStr}
+      cambodia_time: cambodiaTime.toLocaleTimeString('en-US', { hour12: false })
     }, { status: 200 });
 
   } catch (error) {
