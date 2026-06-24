@@ -5,7 +5,9 @@ import { sendTelegramMessage } from "@/lib/telegram";
 const TOLERANCE_MIN = 3;
 
 function parseTimeToMinutes(t) {
-  const [h, m] = (t || "00:00").split(":").map(Number);
+  const parts = (t || "00:00").split(":");
+  const h = Number(parts[0]);
+  const m = Number(parts[1]);
   return h * 60 + m;
 }
 
@@ -17,18 +19,21 @@ export async function GET(request) {
   }
 
   const admin = createAdminClient();
-  const { data: settings } = await admin.from("telegram_settings").select("*").eq("id", 1).maybeSingle();
+  const settingsRes = await admin.from("telegram_settings").select("*").eq("id", 1).maybeSingle();
+  const settings = settingsRes.data;
 
-  if (!settings?.bot_token || !settings?.chat_id) {
+  if (!settings  !settings.bot_token  !settings.chat_id) {
     return NextResponse.json({ skipped: "no telegram settings configured" });
   }
 
-  const { data: tasks } = await admin.from("tasks").select("*").eq("done", false);
+  const tasksRes = await admin.from("tasks").select("*").eq("done", false);
+  const tasks = tasksRes.data || [];
 
   const now = new Date();
   let sent = 0;
 
-  for (const t of tasks || []) {
+  for (let i = 0; i < tasks.length; i++) {
+    const t = tasks[i];
     const taskDateTimeMin = parseTimeToMinutes(t.time);
     const taskDate = new Date(t.date + "T00:00:00");
 
@@ -40,11 +45,8 @@ export async function GET(request) {
       const diffMin = Math.abs((now - triggerDate) / 60000);
       if (diffMin <= TOLERANCE_MIN && now >= new Date(triggerDate.getTime() - TOLERANCE_MIN * 60000)) {
         try {
-          await sendTelegramMessage(
-            settings.bot_token,
-            settings.chat_id,
-            🔔 ការរំលឹកកិច្ចការ\n${t.title}\nម៉ោង ${t.time} | ${t.date}
-          );
+          const msg = "Karangea reminder: " + t.title + " | time " + t.time + " | " + t.date;
+          await sendTelegramMessage(settings.bot_token, settings.chat_id, msg);
           await admin.from("tasks").update({ reminded_same_day: true }).eq("id", t.id);
           sent++;
         } catch (e) {
@@ -68,11 +70,8 @@ export async function GET(request) {
       const diffMin = Math.abs((now - triggerDate) / 60000);
       if (diffMin <= TOLERANCE_MIN && now >= new Date(triggerDate.getTime() - TOLERANCE_MIN * 60000)) {
         try {
-          await sendTelegramMessage(
-            settings.bot_token,
-            settings.chat_id,
-            📌 រំលឹកមុនថ្ងៃ\n${t.title}\nមានកំណត់ម៉ោង ${t.time} | ${t.date}
-          );
+          const msg = "Reminder (day before): " + t.title + " | time " + t.time + " | " + t.date;
+          await sendTelegramMessage(settings.bot_token, settings.chat_id, msg);
           await admin.from("tasks").update({ reminded_day_before: true }).eq("id", t.id);
           sent++;
         } catch (e) {
@@ -82,5 +81,5 @@ export async function GET(request) {
     }
   }
 
-  return NextResponse.json({ ok: true, checked: tasks?.length || 0, sent });
+  return NextResponse.json({ ok: true, checked: tasks.length, sent: sent });
 }
