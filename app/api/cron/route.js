@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// មុខងារបំប្លែងម៉ោង (12:00, 12:00:00, 01:00 PM) ទៅជានាទី
+// មុខងារបំប្លែងម៉ោងគ្រប់ទម្រង់ទៅជានាទីសរុប
 function timeToMinutes(timeStr) {
   if (!timeStr) return -1;
   let str = timeStr.trim().toUpperCase();
@@ -22,7 +22,7 @@ function timeToMinutes(timeStr) {
 }
 
 export async function GET(request) {
-  // ផ្ទៀងផ្ទាត់ Token សុវត្ថិភាពរបស់ Cron
+  // ១. ផ្ទៀងផ្ទាត់ Token សុវត្ថិភាពរបស់ Cron
   const url = new URL(request.url);
   const secret = url.searchParams.get("secret") || request.headers.get("x-cron-secret");
 
@@ -31,13 +31,17 @@ export async function GET(request) {
   }
 
   try {
-    // បង្កើត Supabase Client ផ្ទាល់នៅក្នុងនេះតែម្តង ដើម្បីការពារកុំឱ្យទាស់ទែងការ Import
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY // ប្រើ Service Role ដើម្បីមានសិទ្ធិ Update ទិន្នន័យ
-    );
+    // ២. បង្កើត Supabase Client ផ្ទាល់នៅក្នុងនេះតែម្តង ដើម្បីការពារកុំឱ្យទាស់ទែងការ Import
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    // គណនាម៉ោងកម្ពុជា (UTC + 7)
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json({ error: "Supabase credentials missing in Environment Variables" }, { status: 500 });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // ៣. គណនាម៉ោងកម្ពុជា (UTC + 7)
     const utcNow = new Date();
     const cambodiaTime = new Date(utcNow.getTime() + (7 * 60 * 60 * 1000));
     
@@ -50,7 +54,7 @@ export async function GET(request) {
     const displayMinutes = String(minutesNum).padStart(2, '0');
     const cambodiaTimeLog = ${displayHours}:${displayMinutes};
 
-    // ទាញយក Task ថ្ងៃនេះដែលមិនទាន់បានរំលឹក
+    // ៤. ទាញយកកិច្ចការថ្ងៃនេះ ដែលមិនទាន់បានរំលឹក
     const { data: tasks, error } = await supabase
       .from("tasks")
       .select("*")
@@ -70,7 +74,7 @@ export async function GET(request) {
           
           const message = 🔔 **ការរំលឹកកិច្ចការងារ!**\n\n📌 **កិច្ចការ៖** ${task.title}\n⏰ **ម៉ោង៖** ${task.time}\n📅 **កាលបរិច្ឆេទ៖** ${task.date};
           
-          // ហៅទៅកាន់ Telegram API ដោយផ្ទាល់
+          // ៥. ហៅទៅកាន់ Telegram API ដោយផ្ទាល់
           const telegramUrl = https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage;
           await fetch(telegramUrl, {
             method: "POST",
@@ -82,7 +86,7 @@ export async function GET(request) {
             })
           });
 
-          // ធ្វើបច្ចុប្បន្នភាពទៅ Supabase ថាបានផ្ញើរួច
+          // ៦. ធ្វើបច្ចុប្បន្នភាពទៅ Supabase ថាបានផ្ញើរួច
           await supabase
             .from("tasks")
             .update({ reminded_same_day: true })
