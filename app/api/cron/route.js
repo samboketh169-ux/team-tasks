@@ -6,7 +6,6 @@ export async function GET(request) {
   const url = new URL(request.url);
   const secret = url.searchParams.get("secret") || request.headers.get("x-cron-secret");
 
-  // ១. ពិនិត្យសុវត្ថិភាព Cron Secret
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -14,54 +13,61 @@ export async function GET(request) {
   try {
     const supabase = createAdminClient();
 
-    // ២. ចាប់យកកាលបរិច្ឆេទ និងម៉ោងបច្ចុប្បន្ននៅកម្ពុជា (GMT+7)
+    // ១. ចាប់យកម៉ោងបច្ចុប្បន្ននៅកម្ពុជា (GMT+7)
     const now = new Date();
     const cambodiaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Phnom_Penh" }));
     
-    // បំប្លែងទៅជាទម្រង់ YYYY-MM-DD និង HH:mm (ឧទាហរណ៍៖ "2026-06-24" និង "09:00")
-    const currentDateStr = cambodiaTime.toISOString().split('T')[0];
-    const currentTimeStr = cambodiaTime.toTimeString().split(' ')[0].substring(0, 5);
+    const currentDateStr = cambodiaTime.toISOString().split('T')[0]; // លទ្ធផល៖ "2026-06-24"
+    
+    // ចាប់យកម៉ោងជា ២ ទម្រង់ដើម្បីកុំឱ្យខុស
+    const time24 = cambodiaTime.toTimeString().split(' ')[0].substring(0, 5); // ឧទាហរណ៍៖ "09:00" ឬ "21:30"
+    
+    const options = { hour: '2-digit', minute: '2-digit', hour12: true };
+    const time12 = cambodiaTime.toLocaleTimeString('en-US', options); // ឧទាហរណ៍៖ "09:00 AM" ឬ "09:30 PM"
 
-    console.log(Running cron check for Cambodia Time: ${currentDateStr} ${currentTimeStr});
-
-    // ៣. ទាញយក Task ណាដែលត្រូវនឹង៖ ថ្ងៃនេះ + ម៉ោងនេះ + មិនទាន់បានរំលឹក (reminded_same_day = false)
+    // ២. ទាញយក Task ថ្ងៃនេះទាំងអស់ដែលមិនទាន់បានរំលឹក
     const { data: tasks, error } = await supabase
       .from("tasks")
       .select("*")
       .eq("date", currentDateStr)
-      .eq("time", currentTimeStr)
       .eq("reminded_same_day", false);
 
     if (error) throw error;
 
     let sentCount = 0;
 
-    // ៤. ប្រសិនបើឃើញមាន Task ដល់ម៉ោង ត្រូវផ្ញើសារទៅ Telegram
     if (tasks && tasks.length > 0) {
       for (const task of tasks) {
-        const message = 🔔 **ការរំលឹកកិច្ចការងារ!**\n\n📌 **កិច្ចការ៖** ${task.title}\n⏰ **ម៉ោង៖** ${task.time}\n📅 **កាលបរិច្ឆេទ៖** ${task.date};
-        
-        // ហៅទៅមុខងារផ្ញើសារដែលមានស្រាប់ក្នុងប្រព័ន្ធរបស់អ្នក
-        await sendTelegramMessage(message);
+        // លុបចន្លោះទំនេរ និងបំប្លែងជាអក្សរតូចដើម្បីងាយស្រួលផ្ទៀងផ្ទាត់
+        const dbTime = task.time.trim().toLowerCase();
+        const check24 = time24.toLowerCase();
+        const check12 = time12.toLowerCase();
 
-        // ៥. បច្ចុប្បន្នភាព狀況ទៅជា true ដើម្បីកុំឱ្យផ្ញើជាន់គ្នានៅនាទីបន្ទាប់
-        await supabase
-          .from("tasks")
-          .update({ reminded_same_day: true })
-          .eq("id", task.id);
+        // ៣. បើម៉ោងក្នុង Database ត្រូវនឹងម៉ោងបច្ចុប្បន្ន (ទោះជាទម្រង់ ១២ម៉ោង ឬ ២៤ម៉ោង)
+        if (dbTime === check24 || dbTime === check12) {
+          const message = 🔔 **ការរំលឹកកិច្ចការងារ!**\n\n📌 **កិច្ចការ៖** ${task.title}\n⏰ **ម៉ោង៖** ${task.time}\n📅 **កាលបរិច្ឆេទ៖** ${task.date};
+          
+          await sendTelegramMessage(message);
 
-        sentCount++;
+          // ៤. កត់ត្រាថាបានផ្ញើរួច
+          await supabase
+            .from("tasks")
+            .update({ reminded_same_day: true })
+            .eq("id", task.id);
+
+          sentCount++;
+        }
       }
     }
 
     return NextResponse.json({ 
-      success: true, 
-      message: ពិនិត្យរួចរាល់។ បានផ្ញើសាររំលឹកចំនួន ${sentCount} កិច្ចការ។,
-      time_checked: ${currentDateStr} ${currentTimeStr}
+      ok: true, 
+      checked: tasks?.length || 0, 
+      sent: sentCount,
+      cambodia_time: time12
     }, { status: 200 });
 
   } catch (error) {
-    console.error("Cron Error:", error.message);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
