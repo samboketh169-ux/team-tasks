@@ -1,110 +1,86 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabaseAdmin";
+import { sendTelegramMessage } from "@/lib/telegram";
 
-// មុខងារបំប្លែងម៉ោងគ្រប់ទម្រង់ទៅជានាទីសរុប
-function timeToMinutes(timeStr) {
-  if (!timeStr) return -1;
-  let str = timeStr.trim().toUpperCase();
-  let isPM = str.includes("PM");
-  let isAM = str.includes("AM");
-  
-  str = str.replace(/(AM|PM)/g, "").trim();
-  const parts = str.split(":");
-  if (parts.length < 2) return -1;
-  
-  let hours = parseInt(parts[0], 10);
-  const minutes = parseInt(parts[1], 10);
-  
-  if (isPM && hours < 12) hours += 12;
-  if (isAM && hours === 12) hours = 0;
-  
-  return (hours * 60) + minutes;
+const TOLERANCE_MIN = 3;
+
+function parseTimeToMinutes(t) {
+  const [h, m] = (t || "00:00").split(":").map(Number);
+  return h * 60 + m;
 }
 
 export async function GET(request) {
-  // ១. ផ្ទៀងផ្ទាត់ Token សុវត្ថិភាពរបស់ Cron
   const url = new URL(request.url);
   const secret = url.searchParams.get("secret") || request.headers.get("x-cron-secret");
-
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    // ២. បង្កើត Supabase Client ផ្ទាល់នៅក្នុងនេះតែម្តង ដើម្បីការពារកុំឱ្យទាស់ទែងការ Import
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const admin = createAdminClient();
+  const { data: settings } = await admin.from("telegram_settings").select("*").eq("id", 1).maybeSingle();
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json({ error: "Supabase credentials missing in Environment Variables" }, { status: 500 });
-    }
+  if (!settings?.bot_token || !settings?.chat_id) {
+    return NextResponse.json({ skipped: "no telegram settings configured" });
+  }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const { data: tasks } = await admin.from("tasks").select("*").eq("done", false);
 
-    // ៣. គណនាម៉ោងកម្ពុជា (UTC + 7)
-    const utcNow = new Date();
-    const cambodiaTime = new Date(utcNow.getTime() + (7 * 60 * 60 * 1000));
-    
-    const currentDateStr = cambodiaTime.toISOString().split('T')[0];
-    const hoursNum = cambodiaTime.getUTCHours();
-    const minutesNum = cambodiaTime.getUTCMinutes();
-    
-    const currentMinutes = (hoursNum * 60) + minutesNum;
-    const displayHours = String(hoursNum).padStart(2, '0');
-    const displayMinutes = String(minutesNum).padStart(2, '0');
-    const cambodiaTimeLog = ${displayHours}:${displayMinutes};
+  const now = new Date();
+  let sent = 0;
 
-    // ៤. ទាញយកកិច្ចការថ្ងៃនេះ ដែលមិនទាន់បានរំលឹក
-    const { data: tasks, error } = await supabase
-      .from("tasks")
-      .select("*")
-      .eq("date", currentDateStr)
-      .eq("reminded_same_day", false);
+  for (const t of tasks || []) {
+    const taskDateTimeMin = parseTimeToMinutes(t.time);
+    const taskDate = new Date(t.date + "T00:00:00");
 
-    if (error) throw error;
+    if (!t.reminded_same_day) {
+      const triggerDate = new Date(taskDate);
+      const triggerMin = taskDateTimeMin - (t.remind_same_day || 0);
+      triggerDate.setMinutes(triggerDate.getMinutes() + triggerMin);
 
-    let sentCount = 0;
-
-    if (tasks && tasks.length > 0) {
-      for (const task of tasks) {
-        const dbMinutes = timeToMinutes(task.time);
-
-        // ប្រសិនបើម៉ោងត្រូវគ្នា (លំអៀងមិនលើសពី ២ នាទី)
-        if (dbMinutes !== -1 && Math.abs(currentMinutes - dbMinutes) <= 2) {
-          
-          const message = 🔔 **ការរំលឹកកិច្ចការងារ!**\n\n📌 **កិច្ចការ៖** ${task.title}\n⏰ **ម៉ោង៖** ${task.time}\n📅 **កាលបរិច្ឆេទ៖** ${task.date};
-          
-          // ៥. ហៅទៅកាន់ Telegram API ដោយផ្ទាល់
-          const telegramUrl = https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage;
-          await fetch(telegramUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: process.env.TELEGRAM_CHAT_ID,
-              text: message,
-              parse_mode: "Markdown"
-            })
-          });
-
-          // ៦. ធ្វើបច្ចុប្បន្នភាពទៅ Supabase ថាបានផ្ញើរួច
-          await supabase
-            .from("tasks")
-            .update({ reminded_same_day: true })
-            .eq("id", task.id);
-
-          sentCount++;
+      const diffMin = Math.abs((now - triggerDate) / 60000);
+      if (diffMin <= TOLERANCE_MIN && now >= new Date(triggerDate.getTime() - TOLERANCE_MIN * 60000)) {
+        try {
+          await sendTelegramMessage(
+            settings.bot_token,
+            settings.chat_id,
+            🔔 ការរំលឹកកិច្ចការ\n${t.title}\nម៉ោង ${t.time} | ${t.date}
+          );
+          await admin.from("tasks").update({ reminded_same_day: true }).eq("id", t.id);
+          sent++;
+        } catch (e) {
+          console.error("telegram send failed", e.message);
         }
       }
     }
 
-    return NextResponse.json({ 
-      ok: true, 
-      checked: tasks?.length || 0, 
-      sent: sentCount,
-      cambodia_time: ${currentDateStr} ${cambodiaTimeLog}
-    }, { status: 200 });
+    if (t.remind_day_before && t.remind_day_before !== "none" && !t.reminded_day_before) {
+      let triggerDate;
+      if (t.remind_day_before === "0") {
+        triggerDate = new Date(taskDate);
+        triggerDate.setDate(triggerDate.getDate() - 1);
+        triggerDate.setHours(7, 0, 0, 0);
+      } else {
+        const offsetMin = parseInt(t.remind_day_before, 10);
+        triggerDate = new Date(taskDate);
+        triggerDate.setMinutes(triggerDate.getMinutes() + taskDateTimeMin + offsetMin);
+      }
 
-  } catch (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      const diffMin = Math.abs((now - triggerDate) / 60000);
+      if (diffMin <= TOLERANCE_MIN && now >= new Date(triggerDate.getTime() - TOLERANCE_MIN * 60000)) {
+        try {
+          await sendTelegramMessage(
+            settings.bot_token,
+            settings.chat_id,
+            📌 រំលឹកមុនថ្ងៃ\n${t.title}\nមានកំណត់ម៉ោង ${t.time} | ${t.date}
+          );
+          await admin.from("tasks").update({ reminded_day_before: true }).eq("id", t.id);
+          sent++;
+        } catch (e) {
+          console.error("telegram send failed", e.message);
+        }
+      }
+    }
   }
+
+  return NextResponse.json({ ok: true, checked: tasks?.length || 0, sent });
 }
