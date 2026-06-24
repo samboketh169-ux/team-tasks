@@ -2,14 +2,27 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { sendTelegramMessage } from "@/lib/telegram";
 
+// មុខងារបំប្លែងម៉ោងគ្រប់ទម្រង់ (12:00, 12:00:00, 01:00 PM) ទៅជានាទីសរុប
 function timeToMinutes(timeStr) {
   if (!timeStr) return -1;
-  const cleanTime = timeStr.trim().replace(/[^0-9:]/g, "");
-  const parts = cleanTime.split(":");
+  
+  let str = timeStr.trim().toUpperCase();
+  let isPM = str.includes("PM");
+  let isAM = str.includes("AM");
+  
+  // លុបអក្សរ AM/PM ចេញបើមាន
+  str = str.replace(/(AM|PM)/g, "").trim();
+  
+  const parts = str.split(":");
   if (parts.length < 2) return -1;
   
-  const hours = parseInt(parts[0], 10);
+  let hours = parseInt(parts[0], 10);
   const minutes = parseInt(parts[1], 10);
+  
+  // សម្រួលទម្រង់ ១២ ម៉ោង (AM/PM)
+  if (isPM && hours < 12) hours += 12;
+  if (isAM && hours === 12) hours = 0;
+  
   return (hours * 60) + minutes;
 }
 
@@ -24,26 +37,22 @@ export async function GET(request) {
   try {
     const supabase = createAdminClient();
 
-    // ១. គណនាម៉ោងកម្ពុជា (UTC + 7 ម៉ោង) ដើម្បីកុំឱ្យខុសល្វែងម៉ោងរបស់ Server
+    // ១. គណនាម៉ោងកម្ពុជា (UTC + 7 ម៉ោង)
     const utcNow = new Date();
     const cambodiaTime = new Date(utcNow.getTime() + (7 * 60 * 60 * 1000));
     
-    // បង្កើត String ថ្ងៃខែទម្រង់ YYYY-MM-DD
     const currentDateStr = cambodiaTime.toISOString().split('T')[0];
-    
-    // ចាប់យកម៉ោង និងនាទីជាលេខដាច់ដោយឡែក
     const hoursNum = cambodiaTime.getUTCHours();
     const minutesNum = cambodiaTime.getUTCMinutes();
     
-    // គណនានាទីសរុប និងបង្កើត String សម្រាប់បង្ហាញក្នុង Log
     const currentMinutes = (hoursNum * 60) + minutesNum;
     const displayHours = String(hoursNum).padStart(2, '0');
     const displayMinutes = String(minutesNum).padStart(2, '0');
     const cambodiaTimeLog = ${displayHours}:${displayMinutes};
 
-    console.log([CRON] Checking Date: ${currentDateStr}, Time: ${cambodiaTimeLog});
+    console.log([CRON] Checking Database for Date: ${currentDateStr}, Time: ${cambodiaTimeLog});
 
-    // ២. ទាញយកកិច្ចការទាំងអស់របស់ថ្ងៃនេះ ដែលមិនទាន់បានរំលឹក
+    // ២. ទាញយកកិច្ចការថ្ងៃនេះ ដែលមិនទាន់បានរំលឹក
     const { data: tasks, error } = await supabase
       .from("tasks")
       .select("*")
@@ -53,13 +62,22 @@ export async function GET(request) {
     if (error) throw error;
 
     let sentCount = 0;
+    let taskLogs = [];
 
     if (tasks && tasks.length > 0) {
       for (const task of tasks) {
         const dbMinutes = timeToMinutes(task.time);
+        
+        taskLogs.push({
+          title: task.title,
+          db_time: task.time,
+          db_minutes: dbMinutes,
+          current_minutes: currentMinutes,
+          diff: dbMinutes !== -1 ? Math.abs(currentMinutes - dbMinutes) : "N/A"
+        });
 
-        // ៣. ផ្ទៀងផ្ទាត់៖ បើនាទីក្នុង Database ត្រូវគ្នានឹងម៉ោងបច្ចុប្បន្ន (លំអៀងមិនលើសពី ១ នាទី)
-        if (dbMinutes !== -1 && Math.abs(currentMinutes - dbMinutes) <= 1) {
+        // ៣. ផ្ទៀងផ្ទាត់៖ បើនាទីក្នុង DB ត្រូវគ្នានឹងម៉ោងបច្ចុប្បន្ន (លំអៀងមិនលើសពី ២ នាទីដើម្បីកុំឱ្យធ្លាយ)
+        if (dbMinutes !== -1 && Math.abs(currentMinutes - dbMinutes) <= 2) {
           
           const message = 🔔 **ការរំលឹកកិច្ចការងារ!**\n\n📌 **កិច្ចការ៖** ${task.title}\n⏰ **ម៉ោង៖** ${task.time}\n📅 **កាលបរិច្ឆេទ៖** ${task.date};
           
@@ -81,7 +99,8 @@ export async function GET(request) {
       ok: true, 
       checked: tasks?.length || 0, 
       sent: sentCount,
-      cambodia_time: ${currentDateStr} ${cambodiaTimeLog}
+      cambodia_time: ${currentDateStr} ${cambodiaTimeLog},
+      debug_tasks: taskLogs
     }, { status: 200 });
 
   } catch (error) {
