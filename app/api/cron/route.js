@@ -24,7 +24,7 @@ export async function GET(request) {
   try {
     const supabase = createAdminClient();
 
-    // ១. ចាប់យកម៉ោង UTC រួចបូកថែម ៧ ម៉ោងដើម្បីឱ្យទៅជាម៉ោងកម្ពុជា
+    // ១. ចាប់យកម៉ោង UTC របស់ Server រួចបូកថែម ៧ ម៉ោងដើម្បីឱ្យទៅជាម៉ោងកម្ពុជា
     const utcNow = new Date();
     const cambodiaTime = new Date(utcNow.getTime() + (7 * 60 * 60 * 1000));
     
@@ -35,7 +35,7 @@ export async function GET(request) {
     const hoursNum = cambodiaTime.getUTCHours();
     const minutesNum = cambodiaTime.getUTCMinutes();
     
-    // គណនានាទីសរុប និងបង្កើត String សម្រាប់ Log
+    // គណនានាទីសរុប និងបង្កើត String សម្រាប់បង្ហាញក្នុង Log
     const currentMinutes = (hoursNum * 60) + minutesNum;
     const displayHours = String(hoursNum).padStart(2, '0');
     const displayMinutes = String(minutesNum).padStart(2, '0');
