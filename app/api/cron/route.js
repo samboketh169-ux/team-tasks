@@ -20,6 +20,26 @@ function cambodiaMidnightUtc(dateStr) {
   return new Date(dateStr + "T00:00:00" + CAMBODIA_OFFSET);
 }
 
+function buildSameDayMessage(title, time, date) {
+  let msg = "\u{1F514} \u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be\u1796\u17a2\u17ce\u17cb";
+  msg = msg + "\n";
+  msg = msg + "\u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be\u17e2 " + title;
+  msg = msg + "\n";
+  msg = msg + "\u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be\u1798\u1780\u178a\u179b\u17cb\u17e2 " + time + " " + date;
+  return msg;
+}
+
+function buildDayBeforeMessage(title, time, date) {
+  let msg = "\u{1F4CC} \u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be\u1796\u17a2\u17ce\u17cb";
+  msg = msg + "\n";
+  msg = msg + "\u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be\u17e2 " + title;
+  msg = msg + "\n";
+  msg = msg + "\u179a\u17c6\u179b\u17b9\u1780\u1798\u17bb\u1793\u1790\u17d2\u1784\u17c3";
+  msg = msg + "\n";
+  msg = msg + "\u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be\u1798\u1780\u178a\u179b\u17cb\u17e2 " + time + " " + date;
+  return msg;
+}
+
 export async function GET(request) {
   const url = new URL(request.url);
   let secret = url.searchParams.get("secret");
@@ -87,7 +107,7 @@ export async function GET(request) {
       if (diffMin <= TOLERANCE_MIN) {
         if (now >= windowStart) {
           try {
-            const msg = "Reminder: " + t.title + " | time " + t.time + " | " + t.date;
+            const msg = buildSameDayMessage(t.title, t.time, t.date);
             await sendTelegramMessage(settings.bot_token, settings.chat_id, msg);
             await admin.from("tasks").update({ reminded_same_day: true }).eq("id", t.id);
             sent = sent + 1;
@@ -118,7 +138,7 @@ export async function GET(request) {
         if (diffMin <= TOLERANCE_MIN) {
           if (now >= windowStart) {
             try {
-              const msg = "Reminder (day before): " + t.title + " | time " + t.time + " | " + t.date;
+              const msg = buildDayBeforeMessage(t.title, t.time, t.date);
               await sendTelegramMessage(settings.bot_token, settings.chat_id, msg);
               await admin.from("tasks").update({ reminded_day_before: true }).eq("id", t.id);
               sent = sent + 1;
