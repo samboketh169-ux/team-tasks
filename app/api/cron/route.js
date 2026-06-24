@@ -24,22 +24,24 @@ export async function GET(request) {
   try {
     const supabase = createAdminClient();
 
-    // ១. ចាប់យកម៉ោង UTC របស់ Server រួចបូកថែម ៧ ម៉ោងដើម្បីឱ្យទៅជាម៉ោងកម្ពុជាពិតប្រាកដ
+    // ១. ចាប់យកម៉ោង UTC រួចបូកថែម ៧ ម៉ោងដើម្បីឱ្យទៅជាម៉ោងកម្ពុជា
     const utcNow = new Date();
     const cambodiaTime = new Date(utcNow.getTime() + (7 * 60 * 60 * 1000));
     
-    // បង្កើត String ថ្ងៃខែទម្រង់ YYYY-MM-DD ឱ្យត្រូវនឹងម៉ោងកម្ពុជាថ្មី
+    // បង្កើត String ថ្ងៃខែទម្រង់ YYYY-MM-DD
     const currentDateStr = cambodiaTime.toISOString().split('T')[0];
     
-    // គណនានាទីសរុបនៃម៉ោងកម្ពុជា
-    const currentMinutes = (cambodiaTime.getUTCHours() * 60) + cambodiaTime.getUTCMinutes();
-
-    // បង្កើត String ម៉ោងសម្រាប់បង្ហាញក្នុង Log (ទម្រង់ HH:mm)
-    const displayHours = String(cambodiaTime.getUTCHours()).padStart(2, '0');
-    const displayMinutes = String(cambodiaTime.getUTCMinutes()).padStart(2, '0');
+    // ចាប់យកម៉ោង និងនាទីជាលេខដាច់ដោយឡែក
+    const hoursNum = cambodiaTime.getUTCHours();
+    const minutesNum = cambodiaTime.getUTCMinutes();
+    
+    // គណនានាទីសរុប និងបង្កើត String សម្រាប់ Log
+    const currentMinutes = (hoursNum * 60) + minutesNum;
+    const displayHours = String(hoursNum).padStart(2, '0');
+    const displayMinutes = String(minutesNum).padStart(2, '0');
     const cambodiaTimeLog = ${displayHours}:${displayMinutes};
 
-    console.log([FIXED] Checking for Cambodia Date: ${currentDateStr}, Time: ${cambodiaTimeLog} (Total Minutes: ${currentMinutes}));
+    console.log([FIXED] Checking for Cambodia Date: ${currentDateStr}, Time: ${cambodiaTimeLog});
 
     // ២. ទាញយកកិច្ចការទាំងអស់របស់ថ្ងៃនេះ ដែលមិនទាន់បានរំលឹក
     const { data: tasks, error } = await supabase
@@ -56,9 +58,7 @@ export async function GET(request) {
       for (const task of tasks) {
         const dbMinutes = timeToMinutes(task.time);
 
-        console.log(Comparing Task "${task.title}": DB Minutes = ${dbMinutes}, Current Cambodia Minutes = ${currentMinutes});
-
-        // ៣. ផ្ទៀងផ្ទាត់៖ បើនាទីខុសគ្នាមិនលើសពី ១ នាទី
+        // ៣. ផ្ទៀងផ្ទាត់៖ បើនាទីក្នុង DB ត្រូវគ្នានឹងម៉ោងបច្ចុប្បន្ន (លំអៀងមិនលើសពី ១ នាទី)
         if (dbMinutes !== -1 && Math.abs(currentMinutes - dbMinutes) <= 1) {
           
           const message = 🔔 **ការរំលឹកកិច្ចការងារ!**\n\n📌 **កិច្ចការ៖** ${task.title}\n⏰ **ម៉ោង៖** ${task.time}\n📅 **កាលបរិច្ឆេទ៖** ${task.date};
@@ -85,6 +85,7 @@ export async function GET(request) {
     }, { status: 200 });
 
   } catch (error) {
+    console.error("Cron Error:", error.message);
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
