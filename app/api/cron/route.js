@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabaseAdmin";
+import createAdminClient from "@/lib/supabaseAdmin";
 import { sendTelegramMessage } from "@/lib/telegram";
 
 // មុខងារបំប្លែងម៉ោងគ្រប់ទម្រង់ (12:00, 12:00:00, 01:00 PM) ទៅជានាទីសរុប
