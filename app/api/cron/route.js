@@ -1,25 +1,20 @@
 import { NextResponse } from "next/server";
-import createAdminClient from "@/lib/supabaseAdmin";
-import { sendTelegramMessage } from "@/lib/telegram";
+import { createClient } from "@supabase/supabase-js";
 
-// មុខងារបំប្លែងម៉ោងគ្រប់ទម្រង់ (12:00, 12:00:00, 01:00 PM) ទៅជានាទីសរុប
+// មុខងារបំប្លែងម៉ោង (12:00, 12:00:00, 01:00 PM) ទៅជានាទី
 function timeToMinutes(timeStr) {
   if (!timeStr) return -1;
-  
   let str = timeStr.trim().toUpperCase();
   let isPM = str.includes("PM");
   let isAM = str.includes("AM");
   
-  // លុបអក្សរ AM/PM ចេញបើមាន
   str = str.replace(/(AM|PM)/g, "").trim();
-  
   const parts = str.split(":");
   if (parts.length < 2) return -1;
   
   let hours = parseInt(parts[0], 10);
   const minutes = parseInt(parts[1], 10);
   
-  // សម្រួលទម្រង់ ១២ ម៉ោង (AM/PM)
   if (isPM && hours < 12) hours += 12;
   if (isAM && hours === 12) hours = 0;
   
@@ -27,6 +22,7 @@ function timeToMinutes(timeStr) {
 }
 
 export async function GET(request) {
+  // ផ្ទៀងផ្ទាត់ Token សុវត្ថិភាពរបស់ Cron
   const url = new URL(request.url);
   const secret = url.searchParams.get("secret") || request.headers.get("x-cron-secret");
 
@@ -35,9 +31,13 @@ export async function GET(request) {
   }
 
   try {
-    const supabase = createAdminClient();
+    // បង្កើត Supabase Client ផ្ទាល់នៅក្នុងនេះតែម្តង ដើម្បីការពារកុំឱ្យទាស់ទែងការ Import
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY // ប្រើ Service Role ដើម្បីមានសិទ្ធិ Update ទិន្នន័យ
+    );
 
-    // ១. គណនាម៉ោងកម្ពុជា (UTC + 7 ម៉ោង)
+    // គណនាម៉ោងកម្ពុជា (UTC + 7)
     const utcNow = new Date();
     const cambodiaTime = new Date(utcNow.getTime() + (7 * 60 * 60 * 1000));
     
@@ -50,9 +50,7 @@ export async function GET(request) {
     const displayMinutes = String(minutesNum).padStart(2, '0');
     const cambodiaTimeLog = ${displayHours}:${displayMinutes};
 
-    console.log([CRON] Checking Database for Date: ${currentDateStr}, Time: ${cambodiaTimeLog});
-
-    // ២. ទាញយកកិច្ចការថ្ងៃនេះ ដែលមិនទាន់បានរំលឹក
+    // ទាញយក Task ថ្ងៃនេះដែលមិនទាន់បានរំលឹក
     const { data: tasks, error } = await supabase
       .from("tasks")
       .select("*")
@@ -62,29 +60,29 @@ export async function GET(request) {
     if (error) throw error;
 
     let sentCount = 0;
-    let taskLogs = [];
 
     if (tasks && tasks.length > 0) {
       for (const task of tasks) {
         const dbMinutes = timeToMinutes(task.time);
-        
-        taskLogs.push({
-          title: task.title,
-          db_time: task.time,
-          db_minutes: dbMinutes,
-          current_minutes: currentMinutes,
-          diff: dbMinutes !== -1 ? Math.abs(currentMinutes - dbMinutes) : "N/A"
-        });
 
-        // ៣. ផ្ទៀងផ្ទាត់៖ បើនាទីក្នុង DB ត្រូវគ្នានឹងម៉ោងបច្ចុប្បន្ន (លំអៀងមិនលើសពី ២ នាទីដើម្បីកុំឱ្យធ្លាយ)
+        // ប្រសិនបើម៉ោងត្រូវគ្នា (លំអៀងមិនលើសពី ២ នាទី)
         if (dbMinutes !== -1 && Math.abs(currentMinutes - dbMinutes) <= 2) {
           
           const message = 🔔 **ការរំលឹកកិច្ចការងារ!**\n\n📌 **កិច្ចការ៖** ${task.title}\n⏰ **ម៉ោង៖** ${task.time}\n📅 **កាលបរិច្ឆេទ៖** ${task.date};
           
-          // ផ្ញើសារទៅកាន់ Telegram
-          await sendTelegramMessage(message);
+          // ហៅទៅកាន់ Telegram API ដោយផ្ទាល់
+          const telegramUrl = https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage;
+          await fetch(telegramUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: process.env.TELEGRAM_CHAT_ID,
+              text: message,
+              parse_mode: "Markdown"
+            })
+          });
 
-          // ៤. កត់ត្រាក្នុង Database ថាបានផ្ញើរួចរាល់
+          // ធ្វើបច្ចុប្បន្នភាពទៅ Supabase ថាបានផ្ញើរួច
           await supabase
             .from("tasks")
             .update({ reminded_same_day: true })
@@ -99,12 +97,10 @@ export async function GET(request) {
       ok: true, 
       checked: tasks?.length || 0, 
       sent: sentCount,
-      cambodia_time: ${currentDateStr} ${cambodiaTimeLog},
-      debug_tasks: taskLogs
+      cambodia_time: ${currentDateStr} ${cambodiaTimeLog}
     }, { status: 200 });
 
   } catch (error) {
-    console.error("Cron Error:", error.message);
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
