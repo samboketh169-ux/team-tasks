@@ -17,15 +17,17 @@ export async function GET(request) {
     const now = new Date();
     const cambodiaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Phnom_Penh" }));
     
-    const currentDateStr = cambodiaTime.toISOString().split('T')[0]; // លទ្ធផល៖ "2026-06-24"
+    // បំលែងជាថ្ងៃខែ ទម្រង់ "YYYY-MM-DD"
+    const currentDateStr = cambodiaTime.toISOString().split('T')[0];
     
-    // ចាប់យកម៉ោងជា ២ ទម្រង់ដើម្បីកុំឱ្យខុស
-    const time24 = cambodiaTime.toTimeString().split(' ')[0].substring(0, 5); // ឧទាហរណ៍៖ "09:00" ឬ "21:30"
-    
-    const options = { hour: '2-digit', minute: '2-digit', hour12: true };
-    const time12 = cambodiaTime.toLocaleTimeString('en-US', options); // ឧទាហរណ៍៖ "09:00 AM" ឬ "09:30 PM"
+    // ចាប់យកម៉ោង និងនាទីឱ្យចំទម្រង់ "HH:mm" (ឧទាហរណ៍៖ "10:19" ឬ "09:00")
+    const hours = String(cambodiaTime.getHours()).padStart(2, '0');
+    const minutes = String(cambodiaTime.getMinutes()).padStart(2, '0');
+    const currentTimeStr = ${hours}:${minutes};
 
-    // ២. ទាញយក Task ថ្ងៃនេះទាំងអស់ដែលមិនទាន់បានរំលឹក
+    console.log(Checking tasks for Cambodia Time: ${currentDateStr} ${currentTimeStr});
+
+    // ២. ទាញយកកិច្ចការទាំងអស់របស់ថ្ងៃនេះ ដែលមិនទាន់បានរំលឹក
     const { data: tasks, error } = await supabase
       .from("tasks")
       .select("*")
@@ -38,18 +40,17 @@ export async function GET(request) {
 
     if (tasks && tasks.length > 0) {
       for (const task of tasks) {
-        // លុបចន្លោះទំនេរ និងបំប្លែងជាអក្សរតូចដើម្បីងាយស្រួលផ្ទៀងផ្ទាត់
-        const dbTime = task.time.trim().toLowerCase();
-        const check24 = time24.toLowerCase();
-        const check12 = time12.toLowerCase();
+        // លុបចន្លោះទំនេរ បើមាន (ឧទាហរណ៍៖ "10:19 " -> "10:19")
+        const dbTime = task.time.trim();
 
-        // ៣. បើម៉ោងក្នុង Database ត្រូវនឹងម៉ោងបច្ចុប្បន្ន (ទោះជាទម្រង់ ១២ម៉ោង ឬ ២៤ម៉ោង)
-        if (dbTime === check24 || dbTime === check12) {
+        // ៣. ផ្ទៀងផ្ទាត់បើម៉ោងក្នុង Database ត្រូវគ្នានឹងម៉ោងបច្ចុប្បន្នពិតប្រាកដ
+        if (dbTime === currentTimeStr) {
           const message = 🔔 **ការរំលឹកកិច្ចការងារ!**\n\n📌 **កិច្ចការ៖** ${task.title}\n⏰ **ម៉ោង៖** ${task.time}\n📅 **កាលបរិច្ឆេទ៖** ${task.date};
           
+          // ផ្ញើសារទៅ Telegram
           await sendTelegramMessage(message);
 
-          // ៤. កត់ត្រាថាបានផ្ញើរួច
+          // ៤. កត់ត្រាក្នុង Database ថាបានផ្ញើរួចរាល់
           await supabase
             .from("tasks")
             .update({ reminded_same_day: true })
@@ -64,7 +65,7 @@ export async function GET(request) {
       ok: true, 
       checked: tasks?.length || 0, 
       sent: sentCount,
-      cambodia_time: time12
+      cambodia_time: ${currentDateStr} ${currentTimeStr}
     }, { status: 200 });
 
   } catch (error) {
