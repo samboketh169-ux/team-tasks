@@ -2,10 +2,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { sendTelegramMessage } from "@/lib/telegram";
 
-// មុខងារសម្រាប់បំប្លែងម៉ោងជាអក្សរ (ដូចជា "09:00", "9:05", "10:19") ទៅជានាទីសរុប
 function timeToMinutes(timeStr) {
   if (!timeStr) return -1;
-  // ដកឃ្លា និងសម្អាតអក្សរ បើមាន
   const cleanTime = timeStr.trim().replace(/[^0-9:]/g, "");
   const parts = cleanTime.split(":");
   if (parts.length < 2) return -1;
@@ -26,15 +24,22 @@ export async function GET(request) {
   try {
     const supabase = createAdminClient();
 
-    // ១. ចាប់យកកាលបរិច្ឆេទ និងម៉ោងបច្ចុប្បន្ននៅកម្ពុជា (GMT+7)
-    const now = new Date();
-    const cambodiaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Phnom_Penh" }));
+    // ១. ចាប់យកម៉ោង UTC របស់ Server រួចបូកថែម ៧ ម៉ោងដើម្បីឱ្យទៅជាម៉ោងកម្ពុជាពិតប្រាកដ
+    const utcNow = new Date();
+    const cambodiaTime = new Date(utcNow.getTime() + (7 * 60 * 60 * 1000));
     
-    // ទម្រង់ថ្ងៃខែ៖ YYYY-MM-DD
+    // បង្កើត String ថ្ងៃខែទម្រង់ YYYY-MM-DD ឱ្យត្រូវនឹងម៉ោងកម្ពុជាថ្មី
     const currentDateStr = cambodiaTime.toISOString().split('T')[0];
     
-    // គណនានាទីសរុបនៃម៉ោងបច្ចុប្បន្ននៅកម្ពុជា
-    const currentMinutes = (cambodiaTime.getHours() * 60) + cambodiaTime.getMinutes();
+    // គណនានាទីសរុបនៃម៉ោងកម្ពុជា
+    const currentMinutes = (cambodiaTime.getUTCHours() * 60) + cambodiaTime.getUTCMinutes();
+
+    // បង្កើត String ម៉ោងសម្រាប់បង្ហាញក្នុង Log (ទម្រង់ HH:mm)
+    const displayHours = String(cambodiaTime.getUTCHours()).padStart(2, '0');
+    const displayMinutes = String(cambodiaTime.getUTCMinutes()).padStart(2, '0');
+    const cambodiaTimeLog = ${displayHours}:${displayMinutes};
+
+    console.log([FIXED] Checking for Cambodia Date: ${currentDateStr}, Time: ${cambodiaTimeLog} (Total Minutes: ${currentMinutes}));
 
     // ២. ទាញយកកិច្ចការទាំងអស់របស់ថ្ងៃនេះ ដែលមិនទាន់បានរំលឹក
     const { data: tasks, error } = await supabase
@@ -51,15 +56,17 @@ export async function GET(request) {
       for (const task of tasks) {
         const dbMinutes = timeToMinutes(task.time);
 
-        // ៣. ផ្ទៀងផ្ទាត់៖ ប្រសិនបើម៉ោងបច្ចុប្បន្ន ត្រូវគ្នានឹងម៉ោងក្នុង Database (ខុសគ្នាមិនលើសពី ១ នាទី)
+        console.log(Comparing Task "${task.title}": DB Minutes = ${dbMinutes}, Current Cambodia Minutes = ${currentMinutes});
+
+        // ៣. ផ្ទៀងផ្ទាត់៖ បើនាទីខុសគ្នាមិនលើសពី ១ នាទី
         if (dbMinutes !== -1 && Math.abs(currentMinutes - dbMinutes) <= 1) {
           
           const message = 🔔 **ការរំលឹកកិច្ចការងារ!**\n\n📌 **កិច្ចការ៖** ${task.title}\n⏰ **ម៉ោង៖** ${task.time}\n📅 **កាលបរិច្ឆេទ៖** ${task.date};
           
-          // ផ្ញើសារទៅកាន់ Telegram លក្ខណៈស្វ័យប្រវត្តតាមម៉ោងកំណត់
+          // ផ្ញើសារទៅកាន់ Telegram
           await sendTelegramMessage(message);
 
-          // ៤. កត់ត្រាក្នុង Database ថាបានផ្ញើរួចរាល់ ដើម្បីកុំឱ្យផ្ញើជាន់គ្នាទៀត
+          // ៤. កត់ត្រាក្នុង Database ថាបានផ្ញើរួចរាល់
           await supabase
             .from("tasks")
             .update({ reminded_same_day: true })
@@ -74,7 +81,7 @@ export async function GET(request) {
       ok: true, 
       checked: tasks?.length || 0, 
       sent: sentCount,
-      cambodia_time: cambodiaTime.toLocaleTimeString('en-US', { hour12: false })
+      cambodia_time: ${currentDateStr} ${cambodiaTimeLog}
     }, { status: 200 });
 
   } catch (error) {
