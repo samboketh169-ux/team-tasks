@@ -20,23 +20,109 @@ function cambodiaMidnightUtc(dateStr) {
   return new Date(dateStr + "T00:00:00" + CAMBODIA_OFFSET);
 }
 
+var ICON_REMIND = "\u{1f514}";
+var ICON_DAYBEFORE = "\u{1f4c6}";
+var ICON_TASK = "\u{1f4dd}";
+var ICON_DUE = "\u23f0";
+
+var TITLE_REMIND = "\u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u179a\u17c6\u179b\u17b9\u1780";
+var LABEL_TASK = "\u1780\u17b6\u179a\u1784\u17b6\u179a\u17d6";
+var LABEL_DUE = "\u1780\u17b6\u179a\u1784\u17b6\u179a\u1793\u17b9\u1784\u178a\u179b\u17cb\u1796\u17c1\u179b\u179c\u17c1\u179b\u17b6 \u1798\u17c9\u17c4\u1784 \u1790\u17d2\u1784\u17c3 \u1781\u17c2 \u1786\u17d2\u1793\u17b6\u17c6\u17d6";
+
+var WORD_HOUR = "\u1798\u17c9\u17c4\u1784";
+var WORD_DATE = "\u1790\u17d2\u1784\u17c3\u1791\u17b8";
+var WORD_MONTH = "\u1781\u17c2";
+var WORD_YEAR = "\u1786\u17d2\u1793\u17b6\u17c6";
+
+var PERIOD_MORNING = "\u1796\u17d2\u179a\u17b9\u1780";
+var PERIOD_AFTERNOON = "\u179a\u179f\u17c0\u179b";
+var PERIOD_EVENING = "\u179b\u17d2\u1784\u17b6\u1785";
+var PERIOD_NIGHT = "\u1799\u1794\u17cb";
+
+var MONTHS_KM = [
+  "",
+  "\u1798\u1780\u179a\u17b6",
+  "\u1780\u17bb\u1798\u17d2\u1797\u17c8",
+  "\u1798\u17b8\u1793\u17b6",
+  "\u1798\u17c1\u179f\u17b6",
+  "\u17a7\u179f\u1797\u17b6",
+  "\u1798\u17b7\u1790\u17bb\u1793\u17b6",
+  "\u1780\u1780\u17d2\u1780\u178a\u17b6",
+  "\u179f\u17b8\u17a0\u17b6",
+  "\u1780\u1789\u17d2\u1789\u17b6",
+  "\u178f\u17bb\u179b\u17b6",
+  "\u179c\u17b7\u1785\u17d2\u1786\u17b7\u1780\u17b6",
+  "\u1792\u17d2\u1793\u17bc",
+];
+
+var KHMER_DIGITS = ["\u17e0", "\u17e1", "\u17e2", "\u17e3", "\u17e4", "\u17e5", "\u17e6", "\u17e7", "\u17e8", "\u17e9"];
+
+function toKhmerDigits(numStr) {
+  var out = "";
+  for (var i = 0; i < numStr.length; i++) {
+    var ch = numStr[i];
+    if (ch >= "0" && ch <= "9") {
+      out += KHMER_DIGITS[Number(ch)];
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+}
+
+function pad2(n) {
+  if (n < 10) {
+    return "0" + n;
+  }
+  return "" + n;
+}
+
+function formatKhmerTime(timeStr) {
+  var parts = (timeStr || "00:00").split(":");
+  var h = Number(parts[0]);
+  var m = Number(parts[1]);
+  var period = PERIOD_NIGHT;
+  if (h < 11) {
+    period = PERIOD_MORNING;
+  } else if (h < 17) {
+    period = PERIOD_AFTERNOON;
+  } else if (h < 19) {
+    period = PERIOD_EVENING;
+  } else {
+    period = PERIOD_NIGHT;
+  }
+  var h12 = h % 12;
+  if (h12 === 0) {
+    h12 = 12;
+  }
+  var timeKh = toKhmerDigits("" + h12) + ":" + toKhmerDigits(pad2(m));
+  return WORD_HOUR + " " + timeKh + " " + period;
+}
+
+function formatKhmerDate(dateStr) {
+  var parts = (dateStr || "").split("-");
+  var year = parts[0];
+  var monthIndex = Number(parts[1]);
+  var day = Number(parts[2]);
+  var monthName = MONTHS_KM[monthIndex] || "";
+  return WORD_DATE + toKhmerDigits("" + day) + " " + WORD_MONTH + monthName + " " + WORD_YEAR + toKhmerDigits(year);
+}
+
 function buildSameDayMessage(title, time, date) {
-  let msg = "\u{1F514} \u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be\u1796\u17a2\u17ce\u17cb";
+  var msg = ICON_REMIND + " " + TITLE_REMIND;
   msg = msg + "\n";
-  msg = msg + "\u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be\u17e2 " + title;
+  msg = msg + ICON_TASK + " " + LABEL_TASK + " " + title;
   msg = msg + "\n";
-  msg = msg + "\u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be\u1798\u1780\u178a\u179b\u17cb\u17e2 " + time + " " + date;
+  msg = msg + ICON_DUE + " " + LABEL_DUE + " " + formatKhmerTime(time) + " " + formatKhmerDate(date);
   return msg;
 }
 
 function buildDayBeforeMessage(title, time, date) {
-  let msg = "\u{1F4CC} \u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be\u1796\u17a2\u17ce\u17cb";
+  var msg = ICON_DAYBEFORE + " " + TITLE_REMIND;
   msg = msg + "\n";
-  msg = msg + "\u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be\u17e2 " + title;
+  msg = msg + ICON_TASK + " " + LABEL_TASK + " " + title;
   msg = msg + "\n";
-  msg = msg + "\u179a\u17c6\u179b\u17b9\u1780\u1798\u17bb\u1793\u1790\u17d2\u1784\u17c3";
-  msg = msg + "\n";
-  msg = msg + "\u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be\u1798\u1780\u178a\u179b\u17cb\u17e2 " + time + " " + date;
+  msg = msg + ICON_DUE + " " + LABEL_DUE + " " + formatKhmerTime(time) + " " + formatKhmerDate(date);
   return msg;
 }
 
