@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 html, body {
-  background: #11100f;
-  color: #f2ede2;
+  background: #0f1713;
+  color: #eef3ef;
 }
 
 * {
@@ -12,24 +12,24 @@ html, body {
 }
 
 .card {
-  background: #211e1a;
-  border: 1px solid #322e28;
+  background: #16201b;
+  border: 1px solid #243329;
   border-radius: 16px;
 }
 
 .input-box {
-  background: #1a1816;
-  border: 1px solid #322e28;
+  background: #101a15;
+  border: 1px solid #243329;
   border-radius: 11px;
-  color: #f2ede2;
+  color: #eef3ef;
   padding: 10px 12px;
   outline: none;
   width: 100%;
 }
 
 .btn-primary {
-  background: #ff6a3d;
-  color: #1a0d06;
+  background: #059669;
+  color: #ffffff;
   font-weight: 700;
   border-radius: 11px;
   padding: 12px 16px;
@@ -37,10 +37,14 @@ html, body {
   cursor: pointer;
 }
 
+.btn-primary:hover {
+  background: #047857;
+}
+
 .btn-secondary {
-  background: #1a1816;
-  border: 1px solid #322e28;
-  color: #f2ede2;
+  background: #101a15;
+  border: 1px solid #243329;
+  color: #eef3ef;
   border-radius: 11px;
   padding: 10px 14px;
   cursor: pointer;
