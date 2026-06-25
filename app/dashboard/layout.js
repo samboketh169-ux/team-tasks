@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabaseServer";
-import NavTabs from "@/components/NavTabs";
+import Sidebar from "@/components/Sidebar";
 
 export default async function DashboardLayout({ children }) {
   const supabase = createClient();
@@ -16,9 +16,11 @@ export default async function DashboardLayout({ children }) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 pb-24 pt-6">
-      <NavTabs role={role} email={user?.email} />
-      <div className="mt-5">{children}</div>
+    <div className="min-h-screen md:flex">
+      <Sidebar role={role} email={user?.email} />
+      <main className="flex-1 md:ml-60 px-4 md:px-8 pb-24 pt-6 max-w-5xl">
+        {children}
+      </main>
     </div>
   );
 }
