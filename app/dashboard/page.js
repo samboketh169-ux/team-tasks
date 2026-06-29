@@ -36,6 +36,11 @@ function daysAgoISO(n) {
   d.setDate(d.getDate() - n);
   return d.toISOString().slice(0, 10);
 }
+function daysAheadISO(n) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
 function buildDateList(from, to) {
   const list = [];
   let cur = new Date(from + "T00:00:00");
@@ -57,9 +62,9 @@ export default function DashboardPage() {
   const supabase = createClient();
 
   const [taskFrom, setTaskFrom] = useState(daysAgoISO(29));
-  const [taskTo, setTaskTo] = useState(todayISO());
+  const [taskTo, setTaskTo] = useState(daysAheadISO(30));
   const [jobFrom, setJobFrom] = useState(daysAgoISO(29));
-  const [jobTo, setJobTo] = useState(todayISO());
+  const [jobTo, setJobTo] = useState(daysAheadISO(30));
 
   const [tasks, setTasks] = useState([]);
   const [jobs, setJobs] = useState([]);
@@ -122,8 +127,9 @@ export default function DashboardPage() {
     };
   });
 
-  const StatCard = ({ label, value, color }) => (
+  const StatCard = ({ label, value, color, icon }) => (
     <div className="card p-4 text-center">
+      <div className="text-xl mb-1">{icon}</div>
       <div className={`text-2xl font-bold ${color || "text-ink"}`}>{value}</div>
       <div className="text-xs text-inkFaint mt-1">{label}</div>
     </div>
@@ -225,10 +231,10 @@ export default function DashboardPage() {
           onChange={(f, t) => { setTaskFrom(f); setTaskTo(t); }}
         />
         <div className="grid grid-cols-4 gap-2 mb-4">
-          <StatCard label={LABEL_TOTAL} value={taskTotal} />
-          <StatCard label={LABEL_TODAY} value={taskToday} color="text-sky" />
-          <StatCard label={LABEL_OVERDUE} value={taskOverdue} color="text-ember" />
-          <StatCard label={LABEL_DONE} value={taskDone} color="text-moss" />
+          <StatCard label={LABEL_TOTAL} value={taskTotal} icon={"\u{1F4CB}"} />
+          <StatCard label={LABEL_TODAY} value={taskToday} color="text-sky" icon={"\u{1F4C5}"} />
+          <StatCard label={LABEL_OVERDUE} value={taskOverdue} color="text-ember" icon={"\u26A0\uFE0F"} />
+          <StatCard label={LABEL_DONE} value={taskDone} color="text-moss" icon={"\u2705"} />
         </div>
         {loadingTasks ? (
           <p className="text-inkFaint text-sm">...</p>
@@ -248,9 +254,9 @@ export default function DashboardPage() {
           onChange={(f, t) => { setJobFrom(f); setJobTo(t); }}
         />
         <div className="grid grid-cols-3 gap-2 mb-4">
-          <StatCard label={LABEL_TOTAL} value={jobTotal} />
-          <StatCard label={LABEL_JOB_DONE} value={jobDone} color="text-moss" />
-          <StatCard label={LABEL_JOB_PENDING} value={jobPending} color="text-ember" />
+          <StatCard label={LABEL_TOTAL} value={jobTotal} icon={"\u{1F4CB}"} />
+          <StatCard label={LABEL_JOB_DONE} value={jobDone} color="text-moss" icon={"\u2705"} />
+          <StatCard label={LABEL_JOB_PENDING} value={jobPending} color="text-ember" icon={"\u23F3"} />
         </div>
         {loadingJobs ? (
           <p className="text-inkFaint text-sm">...</p>
