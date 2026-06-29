@@ -1,7 +1,7 @@
 "use client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 
-const LABEL_TITLE = "\u1793\u17b7\u1793\u17d2\u1793\u17b6\u1780\u17b6\u179a\u1794\u17d2\u179a\u1785\u17b6\u17c6\u1790\u17d2\u1784\u17c3";
+const LABEL_TITLE = "\u1791\u17b7\u1793\u17d2\u1793\u1793\u17d0\u1799\u1794\u17d2\u179a\u1785\u17b6\u17c6\u1790\u17d2\u1784\u17c3";
 const LABEL_TOTAL = "\u179f\u179a\u17bb\u1794";
 const LABEL_DONE = "\u1794\u17b6\u1793\u1794\u1789\u17d2\u1785\u1794\u17cb";
 const LABEL_PENDING = "\u1798\u17b7\u1793\u1791\u17b6\u1793\u17cb\u1785\u1794\u17cb";
