@@ -3,15 +3,36 @@ import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabaseClient";
 
 const REMIND_DAY_OPTIONS = [
-  { value: "none", label: "មិនរំលឹក" },
-  { value: "0", label: "ព្រឹកថ្ងៃមុន (07:00)" },
-  { value: "-180", label: "3 ម៉ោងមុនកំណត់ (ថ្ងៃមុន)" },
-  { value: "-360", label: "6 ម៉ោងមុនកំណត់ (ថ្ងៃមុន)" },
-  { value: "-720", label: "12 ម៉ោងមុនកំណត់ (ថ្ងៃមុន)" },
-  { value: "-1440", label: "24 ម៉ោងពិតប្រាកដមុនកំណត់" },
+  { value: "none", label: "\u1798\u17b7\u1793\u179a\u17c6\u179b\u17b9\u1780" },
+  { value: "0", label: "\u1796\u17d2\u179a\u17b9\u1780\u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793 (07:00)" },
+  { value: "-180", label: "3 \u1798\u17c9\u17c4\u1784\u1798\u17bb\u1793\u1780\u17c6\u178e\u178f\u17cb (\u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793)" },
+  { value: "-360", label: "6 \u1798\u17c9\u17c4\u1784\u1798\u17bb\u1793\u1780\u17c6\u178e\u178f\u17cb (\u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793)" },
+  { value: "-720", label: "12 \u1798\u17c9\u17c4\u1784\u1798\u17bb\u1793\u1780\u17c6\u178e\u178f\u17cb (\u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793)" },
+  { value: "-1440", label: "24 \u1798\u17c9\u17c4\u1784\u1796\u17b7\u178f\u1794\u17d2\u179a\u17b6\u1780\u1798\u17bb\u1793\u1780\u17c6\u178e\u178f\u17cb" },
 ];
 
 const REMIND_SAME_DAY_OPTIONS = [0, 5, 10, 15, 30, 60, 120, 180, 360, 720];
+
+const LABEL_NEW_TASK = "\u1794\u1793\u17d2\u1790\u17c2\u1798\u1780\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179a\u1790\u17d2\u1798\u17b8...";
+const LABEL_WORK_TIME = "\u1798\u17c9\u17c4\u1784\u1780\u17b6\u179a\u1784\u17b6\u179a";
+const LABEL_DATE = "\u1790\u17d2\u1784\u17c3";
+const LABEL_TODAY = "\u1790\u17d2\u1784\u17c3\u1793\u17c1\u17c7";
+const LABEL_TOMORROW = "\u179f\u17d2\u17a2\u17c2\u1780";
+const LABEL_CHOOSE = "\u1787\u17d2\u179a\u17be\u179f\u2026";
+const LABEL_REMIND_BEFORE = "\u179a\u17c6\u179b\u17b9\u1780\u1798\u17bb\u1793\u1790\u17d2\u1784\u17c3";
+const LABEL_REMIND_SAME = "\u179a\u17c6\u179b\u17b9\u1780\u178a\u179b\u17cb\u1790\u17d2\u1784\u17c3";
+const LABEL_AT_WORK_TIME = "\u1793\u17c5\u1798\u17c9\u17c4\u1784\u1780\u17b6\u179a\u1784\u17b6\u179a";
+const LABEL_MIN_BEFORE = "\u1793\u17b6\u1791\u17b8\u1798\u17bb\u1793";
+const LABEL_ADD_TASK = "+ \u1794\u1793\u17d2\u1790\u17c2\u1798\u1780\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179a";
+const LABEL_LIST_TITLE = "\u1794\u1789\u17d2\u1787\u17b8\u1780\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179a";
+const LABEL_REMAINING = "\u179f\u179b\u17cb";
+const LABEL_LOADING = "\u1780\u17c6\u1796\u17bb\u1784\u1795\u17d2\u1791\u17bb\u1780...";
+const LABEL_EMPTY = "\u1798\u17b7\u1793\u1791\u17b6\u1793\u17cb\u1798\u17b6\u1793\u1780\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179a\u1791\u17c1\u17d4 \u1794\u1793\u17d2\u1790\u17c2\u1798\u1780\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179a \u1780\u17c6\u178e\u178f\u17cb\u1798\u17c9\u17c4\u1784 \u17ac\u1790\u17d2\u1784\u17c3 \u1793\u17b7\u1784\u17a2\u17b6\u1785\u1787\u17d2\u179a\u17be\u179f\u1798\u17c9\u17c4\u1784\u179a\u17c6\u179b\u17b9\u1780\u17d4";
+const LABEL_EDIT = "\u1780\u17c2\u179f\u1798\u17d2\u179a\u17bd\u179b";
+const LABEL_EDIT_TITLE = "\u1780\u17c2\u179f\u1798\u17d2\u179a\u17bd\u179b\u1780\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179a";
+const LABEL_SAVE = "\u179a\u1780\u17d2\u179f\u17b6\u1791\u17bb\u1780";
+const LABEL_CANCEL = "\u1794\u17b7\u1791";
+const LABEL_CUSTOM_DATE = "\u1787\u17d2\u179a\u17be\u179f\u1780\u17b6\u179b\u1794\u179a\u17b7\u1785\u17d2\u1786\u17c1\u1791";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -33,6 +54,13 @@ export default function TodoPage() {
   const [remindDayBefore, setRemindDayBefore] = useState("-360");
   const [remindSameDay, setRemindSameDay] = useState("30");
   const [toast, setToast] = useState("");
+
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDate, setEditDate] = useState(todayISO());
+  const [editTime, setEditTime] = useState("09:00");
+  const [editRemindDayBefore, setEditRemindDayBefore] = useState("-360");
+  const [editRemindSameDay, setEditRemindSameDay] = useState("30");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,11 +101,11 @@ export default function TodoPage() {
       reminded_same_day: false,
     });
     if (error) {
-      showToast("មានបញ្ហា៖ " + error.message);
+      showToast("\u1798\u17b6\u1793\u1794\u1789\u17d2\u17a0\u17b6\u17d6 " + error.message);
       return;
     }
     setTitle("");
-    showToast("បានបន្ថែមកិច្ចការ");
+    showToast("\u1794\u17b6\u1793\u1794\u1793\u17d2\u1790\u17c2\u1798\u1780\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179a");
     load();
   }
 
@@ -88,6 +116,42 @@ export default function TodoPage() {
 
   async function removeTask(id) {
     await supabase.from("tasks").delete().eq("id", id);
+    load();
+  }
+
+  function openEdit(t) {
+    setEditingId(t.id);
+    setEditTitle(t.title);
+    setEditDate(t.date);
+    setEditTime(t.time);
+    setEditRemindDayBefore(t.remind_day_before || "none");
+    setEditRemindSameDay(String(t.remind_same_day || 0));
+  }
+
+  function closeEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit() {
+    if (!editTitle.trim()) return;
+    const { error } = await supabase
+      .from("tasks")
+      .update({
+        title: editTitle.trim(),
+        date: editDate,
+        time: editTime,
+        remind_day_before: editRemindDayBefore,
+        remind_same_day: parseInt(editRemindSameDay, 10),
+        reminded_day_before: false,
+        reminded_same_day: false,
+      })
+      .eq("id", editingId);
+    if (error) {
+      showToast("\u1798\u17b6\u1793\u1794\u1789\u17d2\u17a0\u17b6\u17d6 " + error.message);
+      return;
+    }
+    showToast("\u1794\u17b6\u1793\u179a\u1780\u17d2\u179f\u17b6\u1791\u17bb\u1780\u1780\u17b6\u179a\u1780\u17c2\u179f\u1798\u17d2\u179a\u17bd\u179b");
+    setEditingId(null);
     load();
   }
 
@@ -105,7 +169,7 @@ export default function TodoPage() {
       <div className="card p-4 mb-5">
         <input
           className="input-box mb-3"
-          placeholder="បន្ថែមកិច្ចការថ្មី…"
+          placeholder={LABEL_NEW_TASK}
           maxLength={200}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -113,7 +177,7 @@ export default function TodoPage() {
 
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div>
-            <label className="text-xs text-inkFaint">⏰ ម៉ោងការងារ</label>
+            <label className="text-xs text-inkFaint">{"\u23f0 " + LABEL_WORK_TIME}</label>
             <input
               type="time"
               className="input-box mt-1"
@@ -122,11 +186,11 @@ export default function TodoPage() {
             />
           </div>
           <div>
-            <label className="text-xs text-inkFaint">📅 ថ្ងៃ</label>
+            <label className="text-xs text-inkFaint">{"\u{1F4C5} " + LABEL_DATE}</label>
             <select className="input-box mt-1" value={day} onChange={(e) => setDay(e.target.value)}>
-              <option value="today">ថ្ងៃនេះ</option>
-              <option value="tomorrow">ស្អែក</option>
-              <option value="custom">ជ្រើស…</option>
+              <option value="today">{LABEL_TODAY}</option>
+              <option value="tomorrow">{LABEL_TOMORROW}</option>
+              <option value="custom">{LABEL_CHOOSE}</option>
             </select>
           </div>
         </div>
@@ -141,7 +205,7 @@ export default function TodoPage() {
         )}
 
         <div className="mb-2">
-          <label className="text-xs text-inkFaint">🔔 រំលឹកមុនថ្ងៃ</label>
+          <label className="text-xs text-inkFaint">{"\u{1F514} " + LABEL_REMIND_BEFORE}</label>
           <select
             className="input-box mt-1"
             value={remindDayBefore}
@@ -156,7 +220,7 @@ export default function TodoPage() {
         </div>
 
         <div className="mb-3">
-          <label className="text-xs text-inkFaint">⏱ រំលឹកដល់ថ្ងៃ</label>
+          <label className="text-xs text-inkFaint">{"\u23f1 " + LABEL_REMIND_SAME}</label>
           <select
             className="input-box mt-1"
             value={remindSameDay}
@@ -164,23 +228,23 @@ export default function TodoPage() {
           >
             {REMIND_SAME_DAY_OPTIONS.map((m) => (
               <option key={m} value={m}>
-                {m === 0 ? "នៅម៉ោងការងារ" : `${m} នាទីមុន`}
+                {m === 0 ? LABEL_AT_WORK_TIME : m + " " + LABEL_MIN_BEFORE}
               </option>
             ))}
           </select>
         </div>
 
         <button className="btn-primary w-full" onClick={addTask}>
-          + បន្ថែមកិច្ចការ
+          {LABEL_ADD_TASK}
         </button>
       </div>
 
       <div className="flex justify-between text-xs text-inkFaint font-mono mb-3 px-1">
-        <span>បញ្ជីកិច្ចការ</span>
-        <span>{pending} សល់</span>
+        <span>{LABEL_LIST_TITLE}</span>
+        <span>{pending + " " + LABEL_REMAINING}</span>
       </div>
 
-      {loading && <p className="text-inkFaint text-sm">កំពុងផ្ទុក...</p>}
+      {loading && <p className="text-inkFaint text-sm">{LABEL_LOADING}</p>}
 
       <div className="flex flex-col gap-2">
         {tasks.map((t) => {
@@ -198,27 +262,105 @@ export default function TodoPage() {
                   t.done ? "bg-moss border-moss" : "border-inkFaint"
                 }`}
               >
-                {t.done && <span className="text-bg text-xs">✓</span>}
+                {t.done && <span className="text-bg text-xs">{"\u2713"}</span>}
               </button>
               <div className="flex-1 min-w-0">
                 <div className={`text-sm ${t.done ? "line-through text-inkFaint" : ""}`}>{t.title}</div>
                 <div className="flex items-center gap-2 mt-1 text-xs font-mono text-inkFaint flex-wrap">
-                  <span className={overdue ? "text-ember" : ""}>⏰ {t.time}</span>
+                  <span className={overdue ? "text-ember" : ""}>{"\u23f0 " + t.time}</span>
                   <span className="px-2 py-0.5 rounded-full bg-white/5">{t.date}</span>
+                </div>
+                <div className="flex gap-3 mt-1.5 text-xs">
+                  <button onClick={() => openEdit(t)} className="text-sky">
+                    {LABEL_EDIT}
+                  </button>
                 </div>
               </div>
               <button onClick={() => removeTask(t.id)} className="text-inkFaint hover:text-ember text-lg leading-none">
-                ×
+                {"\u00d7"}
               </button>
             </div>
           );
         })}
         {!loading && tasks.length === 0 && (
           <div className="text-center text-inkFaint py-12 text-sm">
-            មិនទាន់មានកិច្ចការទេ។ បន្ថែមកិច្ចការ កំណត់ម៉ោង និងជ្រើសម៉ោងរំលឹក។
+            {LABEL_EMPTY}
           </div>
         )}
       </div>
+
+      {editingId && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center">
+          <div className="card w-full max-w-lg rounded-b-none p-5 max-h-[85vh] overflow-y-auto">
+            <h3 className="font-display text-lg mb-3">{LABEL_EDIT_TITLE}</h3>
+
+            <input
+              className="input-box mb-3"
+              maxLength={200}
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+            />
+
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div>
+                <label className="text-xs text-inkFaint">{LABEL_WORK_TIME}</label>
+                <input
+                  type="time"
+                  className="input-box mt-1"
+                  value={editTime}
+                  onChange={(e) => setEditTime(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-inkFaint">{LABEL_CUSTOM_DATE}</label>
+                <input
+                  type="date"
+                  className="input-box mt-1"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mb-2">
+              <label className="text-xs text-inkFaint">{LABEL_REMIND_BEFORE}</label>
+              <select
+                className="input-box mt-1"
+                value={editRemindDayBefore}
+                onChange={(e) => setEditRemindDayBefore(e.target.value)}
+              >
+                {REMIND_DAY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="text-xs text-inkFaint">{LABEL_REMIND_SAME}</label>
+              <select
+                className="input-box mt-1"
+                value={editRemindSameDay}
+                onChange={(e) => setEditRemindSameDay(e.target.value)}
+              >
+                {REMIND_SAME_DAY_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m === 0 ? LABEL_AT_WORK_TIME : m + " " + LABEL_MIN_BEFORE}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button className="btn-primary w-full mb-2" onClick={saveEdit}>
+              {LABEL_SAVE}
+            </button>
+            <button className="btn-secondary w-full" onClick={closeEdit}>
+              {LABEL_CANCEL}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
