@@ -24,10 +24,13 @@ var ICON_REMIND = "\u{1f514}";
 var ICON_DAYBEFORE = "\u{1f4c6}";
 var ICON_TASK = "\u{1f4dd}";
 var ICON_DUE = "\u23f0";
+var ICON_COUNTDOWN = "\u23f3";
 
 var TITLE_REMIND = "\u1780\u17b6\u179a\u1784\u17b6\u179a\u178f\u17d2\u179a\u17bc\u179c\u179a\u17c6\u179b\u17b9\u1780";
 var LABEL_TASK = "\u1780\u17b6\u179a\u1784\u17b6\u179a\u17d6";
 var LABEL_DUE = "\u1780\u17b6\u179a\u1784\u17b6\u179a\u1793\u17b9\u1784\u178a\u179b\u17cb\u1796\u17c1\u179b\u179c\u17c1\u179b\u17b6 \u1798\u17c9\u17c4\u1784 \u1790\u17d2\u1784\u17c3 \u1781\u17c2 \u1786\u17d2\u1793\u17b6\u17c6\u17d6";
+var LABEL_DAYS_BEFORE_PREFIX = "\u1780\u17b6\u179a\u179a\u17c6\u179b\u17b9\u1780\u1780\u17b6\u179a\u1784\u17b6\u179a \u1798\u17bb\u1793\u1790\u17d2\u1784\u17c3";
+var WORD_DAY_SUFFIX = "\u1790\u17d2\u1784\u17c3";
 
 var WORD_HOUR = "\u1798\u17c9\u17c4\u1784";
 var WORD_DATE = "\u1790\u17d2\u1784\u17c3\u1791\u17b8";
@@ -117,13 +120,43 @@ function buildSameDayMessage(title, time, date) {
   return msg;
 }
 
-function buildDayBeforeMessage(title, time, date) {
+function buildDayBeforeMessage(title, time, date, dayCount) {
   var msg = ICON_DAYBEFORE + " " + TITLE_REMIND;
   msg = msg + "\n";
   msg = msg + ICON_TASK + " " + LABEL_TASK + " " + title;
   msg = msg + "\n";
+  msg = msg + ICON_COUNTDOWN + " " + LABEL_DAYS_BEFORE_PREFIX + " " + toKhmerDigits("" + dayCount) + " " + WORD_DAY_SUFFIX;
+  msg = msg + "\n";
   msg = msg + ICON_DUE + " " + LABEL_DUE + " " + formatKhmerTime(time) + " " + formatKhmerDate(date);
   return msg;
+}
+
+// Resolve the trigger Date (UTC instant) for the "day before" reminder,
+// and the day-count to show in the message.
+// Supports new format: plain integer string "1".."5" = N days before, same clock time.
+// Also supports legacy formats for tasks created before this update:
+//   "0"            => 07:00 on the day before
+//   negative number => minutes offset from the task's date midnight (old hour-based system)
+function resolveDayBeforeTrigger(remindDayBefore, taskDateMidnight, taskDateTimeMin) {
+  var n = parseInt(remindDayBefore, 10);
+
+  if (remindDayBefore === "0") {
+    var t0 = new Date(taskDateMidnight);
+    t0.setDate(t0.getDate() - 1);
+    t0.setHours(7, 0, 0, 0);
+    return { triggerDate: t0, dayCount: 1 };
+  }
+
+  if (n >= 1 && n <= 5) {
+    var t1 = new Date(taskDateMidnight);
+    t1.setMinutes(t1.getMinutes() + taskDateTimeMin - n * 1440);
+    return { triggerDate: t1, dayCount: n };
+  }
+
+  // legacy negative-minute-offset format
+  var t2 = new Date(taskDateMidnight);
+  t2.setMinutes(t2.getMinutes() + taskDateTimeMin + n);
+  return { triggerDate: t2, dayCount: 1 };
 }
 
 export async function GET(request) {
@@ -207,16 +240,9 @@ export async function GET(request) {
     const hasDayBefore = t.remind_day_before && t.remind_day_before !== "none";
     if (hasDayBefore) {
       if (!t.reminded_day_before) {
-        let triggerDate;
-        if (t.remind_day_before === "0") {
-          triggerDate = new Date(taskDateMidnight);
-          triggerDate.setDate(triggerDate.getDate() - 1);
-          triggerDate.setHours(7, 0, 0, 0);
-        } else {
-          const offsetMin = parseInt(t.remind_day_before, 10);
-          triggerDate = new Date(taskDateMidnight);
-          triggerDate.setMinutes(triggerDate.getMinutes() + taskDateTimeMin + offsetMin);
-        }
+        const resolved = resolveDayBeforeTrigger(t.remind_day_before, taskDateMidnight, taskDateTimeMin);
+        const triggerDate = resolved.triggerDate;
+        const dayCount = resolved.dayCount;
 
         const diffMin = Math.abs((now - triggerDate) / 60000);
         const windowStart = new Date(triggerDate.getTime() - TOLERANCE_MIN * 60000);
@@ -224,7 +250,7 @@ export async function GET(request) {
         if (diffMin <= TOLERANCE_MIN) {
           if (now >= windowStart) {
             try {
-              const msg = buildDayBeforeMessage(t.title, t.time, t.date);
+              const msg = buildDayBeforeMessage(t.title, t.time, t.date, dayCount);
               await sendTelegramMessage(settings.bot_token, settings.chat_id, msg);
               await admin.from("tasks").update({ reminded_day_before: true }).eq("id", t.id);
               sent = sent + 1;
