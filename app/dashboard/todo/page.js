@@ -4,11 +4,11 @@ import { createClient } from "@/lib/supabaseClient";
 
 const REMIND_DAY_OPTIONS = [
   { value: "none", label: "\u1798\u17b7\u1793\u179a\u17c6\u179b\u17b9\u1780" },
-  { value: "0", label: "\u1796\u17d2\u179a\u17b9\u1780\u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793 (07:00)" },
-  { value: "-180", label: "3 \u1798\u17c9\u17c4\u1784\u1798\u17bb\u1793\u1780\u17c6\u178e\u178f\u17cb (\u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793)" },
-  { value: "-360", label: "6 \u1798\u17c9\u17c4\u1784\u1798\u17bb\u1793\u1780\u17c6\u178e\u178f\u17cb (\u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793)" },
-  { value: "-720", label: "12 \u1798\u17c9\u17c4\u1784\u1798\u17bb\u1793\u1780\u17c6\u178e\u178f\u17cb (\u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793)" },
-  { value: "-1440", label: "24 \u1798\u17c9\u17c4\u1784\u1796\u17b7\u178f\u1794\u17d2\u179a\u17b6\u1780\u1798\u17bb\u1793\u1780\u17c6\u178e\u178f\u17cb" },
+  { value: "1", label: "1 \u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793" },
+  { value: "2", label: "2 \u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793" },
+  { value: "3", label: "3 \u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793" },
+  { value: "4", label: "4 \u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793" },
+  { value: "5", label: "5 \u1790\u17d2\u1784\u17c3\u1798\u17bb\u1793" },
 ];
 
 const REMIND_SAME_DAY_OPTIONS = [0, 5, 10, 15, 30, 60, 120, 180, 360, 720];
@@ -51,7 +51,7 @@ export default function TodoPage() {
   const [time, setTime] = useState("09:00");
   const [day, setDay] = useState("today");
   const [customDate, setCustomDate] = useState(todayISO());
-  const [remindDayBefore, setRemindDayBefore] = useState("-360");
+  const [remindDayBefore, setRemindDayBefore] = useState("1");
   const [remindSameDay, setRemindSameDay] = useState("30");
   const [toast, setToast] = useState("");
 
@@ -59,7 +59,7 @@ export default function TodoPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editDate, setEditDate] = useState(todayISO());
   const [editTime, setEditTime] = useState("09:00");
-  const [editRemindDayBefore, setEditRemindDayBefore] = useState("-360");
+  const [editRemindDayBefore, setEditRemindDayBefore] = useState("1");
   const [editRemindSameDay, setEditRemindSameDay] = useState("30");
 
   const load = useCallback(async () => {
