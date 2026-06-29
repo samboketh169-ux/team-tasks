@@ -85,11 +85,13 @@ function formatKhmerTime(timeStr) {
   var h = Number(parts[0]);
   var m = Number(parts[1]);
   var period = PERIOD_NIGHT;
-  if (h < 11) {
+  if (h < 5) {
+    period = PERIOD_NIGHT;
+  } else if (h < 12) {
     period = PERIOD_MORNING;
   } else if (h < 17) {
     period = PERIOD_AFTERNOON;
-  } else if (h < 19) {
+  } else if (h < 20) {
     period = PERIOD_EVENING;
   } else {
     period = PERIOD_NIGHT;
