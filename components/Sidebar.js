@@ -27,8 +27,8 @@ export default function Sidebar({ role, email }) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:flex-col md:fixed md:left-0 md:top-0 md:h-screen md:w-60 bg-[#15201c] border-r border-[#22332b] z-40">
-        <div className="px-5 py-6 border-b border-[#22332b]">
+      <aside className="hidden md:flex md:flex-col md:fixed md:left-0 md:top-0 md:h-screen md:w-60 bg-gradient-to-b from-[#111723] to-[#0c1019] border-r border-[#202736] z-40">
+        <div className="px-5 py-6 border-b border-[#202736]">
           <div className="flex items-center gap-2">
             <span className="text-2xl">{"\u{1F4D2}"}</span>
             <h1 className="font-display text-lg text-ink leading-tight">
@@ -48,8 +48,8 @@ export default function Sidebar({ role, email }) {
                 href={t.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                   active
-                    ? "bg-emerald-600 text-white font-semibold shadow-sm"
-                    : "text-[#a8bdb2] hover:bg-[#1d2b25] hover:text-ink"
+                    ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold shadow-glow"
+                    : "text-[#a7b0c2] hover:bg-[#171f2c] hover:text-ink"
                 }`}
               >
                 <span className="text-lg">{t.icon}</span>
@@ -59,11 +59,11 @@ export default function Sidebar({ role, email }) {
           })}
         </nav>
 
-        <div className="px-4 py-4 border-t border-[#22332b]">
-          <div className="text-xs text-[#7c9286] truncate mb-2">{email}</div>
+        <div className="px-4 py-4 border-t border-[#202736]">
+          <div className="text-xs text-[#6c7689] truncate mb-2">{email}</div>
           <button
             onClick={handleLogout}
-            className="w-full text-xs py-2 rounded-lg bg-[#1d2b25] text-[#a8bdb2] hover:bg-[#26392f]"
+            className="w-full text-xs py-2 rounded-lg bg-[#171f2c] text-[#a7b0c2] hover:bg-[#1c2433]"
           >
             {"\u1785\u17b6\u1780\u1785\u17c1\u1789"}
           </button>
@@ -94,7 +94,7 @@ export default function Sidebar({ role, email }) {
                 href={t.href}
                 className={`whitespace-nowrap flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl border ${
                   active
-                    ? "bg-emerald-600 text-white border-emerald-600 font-semibold"
+                    ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-emerald-500 font-semibold shadow-glow"
                     : "bg-bgCard text-inkDim border-line"
                 }`}
               >
