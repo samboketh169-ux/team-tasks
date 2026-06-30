@@ -19,6 +19,7 @@ export default function AdminPage() {
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState("member");
+  const [editPassword, setEditPassword] = useState("");
   const [editBusy, setEditBusy] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -88,10 +89,12 @@ export default function AdminPage() {
     setEditingId(m.id);
     setEditName(m.full_name);
     setEditRole(m.role);
+    setEditPassword("");
   }
 
   function closeEdit() {
     setEditingId(null);
+    setEditPassword("");
   }
 
   async function saveEdit() {
@@ -100,7 +103,12 @@ export default function AdminPage() {
     const res = await fetch("/api/admin/update-user", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: editingId, fullName: editName.trim(), role: editRole }),
+      body: JSON.stringify({
+        userId: editingId,
+        fullName: editName.trim(),
+        role: editRole,
+        newPassword: editPassword.trim() || null,
+      }),
     });
     const json = await res.json();
     setEditBusy(false);
@@ -110,6 +118,7 @@ export default function AdminPage() {
     }
     setMsg("\u1794\u17b6\u1793\u1780\u17c2\u1794\u17d2\u179a\u17c2\u1782\u178e\u1793\u17b8\u178a\u17c4\u1799\u1787\u17c4\u1782\u1787\u17d0\u1799 \u2713");
     setEditingId(null);
+    setEditPassword("");
     loadMembers();
   }
 
@@ -238,6 +247,17 @@ export default function AdminPage() {
               <option value="member">{"\u179f\u1798\u17b6\u1787\u17b7\u1780\u1780\u17d2\u179a\u17bb\u1798 (member)"}</option>
               <option value="admin">Admin</option>
             </select>
+            <label className="text-xs text-inkFaint">
+              {"\u1796\u17b6\u179f\u179c\u1785\u1793\u17cd\u1790\u17d2\u1798\u17b8 (\u179f\u17d2\u179a\u17c1\u1785\u1785\u17b7\u178f\u17d2\u178f \u2014 \u1791\u17bb\u1780\u1791\u1791\u17c1\u1794\u17be\u1798\u17b7\u1793\u1785\u1784\u17cb\u1794\u17d2\u178f\u17bc\u179a)"}
+            </label>
+            <input
+              className="input-box mt-1 mb-4"
+              type="password"
+              placeholder={"\u179f\u179a\u179f\u17c1\u179a (\u1799\u17c9\u17b6\u1784\u178f\u17b7\u1785 \u17e6 \u178f\u17bd) \u1794\u17be\u1785\u1784\u17cb\u1794\u17d2\u178f\u17bc\u179a"}
+              value={editPassword}
+              onChange={(e) => setEditPassword(e.target.value)}
+              minLength={6}
+            />
             <button className="btn-primary w-full mb-2" onClick={saveEdit} disabled={editBusy}>
               {editBusy ? "\u1780\u17c6\u1796\u17bb\u1784\u1780\u17c2\u1794\u17d2\u179a\u17c2..." : "\u179a\u1780\u17d2\u179f\u17b6\u1791\u17bb\u1780"}
             </button>
