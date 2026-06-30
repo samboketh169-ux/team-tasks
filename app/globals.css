@@ -3,49 +3,113 @@
 @tailwind utilities;
 
 html, body {
-  background: #0f1713;
-  color: #eef3ef;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(34,201,138,0.07), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(63,182,245,0.06), transparent 55%),
+    #0a0e16;
+  color: #eef1f7;
+  min-height: 100%;
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
+::selection {
+  background: rgba(34,201,138,0.3);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #202736;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2a3142;
+}
+
 .card {
-  background: #16201b;
-  border: 1px solid #243329;
-  border-radius: 16px;
+  background: linear-gradient(180deg, #161d2a 0%, #131926 100%);
+  border: 1px solid #202736;
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -10px rgba(0,0,0,0.6);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  border-color: #2a3344;
 }
 
 .input-box {
-  background: #101a15;
-  border: 1px solid #243329;
-  border-radius: 11px;
-  color: #eef3ef;
-  padding: 10px 12px;
+  background: #0d1320;
+  border: 1px solid #202736;
+  border-radius: 12px;
+  color: #eef1f7;
+  padding: 11px 13px;
   outline: none;
   width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input-box::placeholder {
+  color: #5a6478;
+}
+
+.input-box:focus {
+  border-color: #22c98a;
+  box-shadow: 0 0 0 3px rgba(34,201,138,0.15);
 }
 
 .btn-primary {
-  background: #059669;
-  color: #ffffff;
+  background: linear-gradient(180deg, #28d99a 0%, #1cb37e 100%);
+  color: #06140e;
   font-weight: 700;
-  border-radius: 11px;
+  border-radius: 12px;
   padding: 12px 16px;
   border: none;
   cursor: pointer;
+  box-shadow: 0 4px 14px -4px rgba(34,201,138,0.45);
+  transition: transform 0.1s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
 .btn-primary:hover {
-  background: #047857;
+  filter: brightness(1.06);
+  box-shadow: 0 6px 18px -4px rgba(34,201,138,0.55);
+}
+
+.btn-primary:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: none;
+  box-shadow: none;
 }
 
 .btn-secondary {
-  background: #101a15;
-  border: 1px solid #243329;
-  color: #eef3ef;
-  border-radius: 11px;
+  background: #131a26;
+  border: 1px solid #202736;
+  color: #eef1f7;
+  border-radius: 12px;
   padding: 10px 14px;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background: #18202e;
+  border-color: #2a3344;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
