@@ -15,12 +15,13 @@ export async function POST(request) {
     return NextResponse.json({ error: "\u178f\u1798\u17d2\u179a\u17bc\u179c\u17a2\u17b6\u179f\u17a0\u17b6\u1798\u17d0\u1799\u17a2\u17c2\u1796\u17c1\u179b\u17bc\u17e2 Admin \u1796\u17b6\u1791\u17b6\u17c5" }, { status: 403 });
   }
 
-  const { userId, fullName, role } = await request.json();
+  const { userId, fullName, role, newPassword } = await request.json();
   if (!userId || !fullName) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
   const admin = createAdminClient();
+
   const { error } = await admin
     .from("profiles")
     .update({
@@ -31,6 +32,18 @@ export async function POST(request) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  if (newPassword && newPassword.trim().length > 0) {
+    if (newPassword.trim().length < 6) {
+      return NextResponse.json({ error: "\u1796\u17b6\u179f\u179c\u1785\u1793\u17cd\u178f\u17d2\u179a\u17bc\u179c\u1799\u17c9\u17b6\u1784\u178f\u17b7\u1785 6 \u178f\u17bd" }, { status: 400 });
+    }
+    const { error: pwError } = await admin.auth.admin.updateUserById(userId, {
+      password: newPassword.trim(),
+    });
+    if (pwError) {
+      return NextResponse.json({ error: pwError.message }, { status: 400 });
+    }
   }
 
   return NextResponse.json({ ok: true });
