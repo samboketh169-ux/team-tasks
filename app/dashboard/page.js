@@ -17,8 +17,6 @@ const LABEL_GO_TASKS = "\u1791\u17c5\u1780\u17b6\u1793\u17cb\u1780\u17b6\u179a\u
 const LABEL_GO_JOBS = "\u1791\u17c5\u1780\u17b6\u1793\u17cb\u1780\u178f\u17cb\u178f\u17d2\u179a\u17b6\u1780\u17b6\u179a\u1784\u17b6\u179a";
 
 const LABEL_DOWNLOAD_REPORT = "\u1791\u17b6\u1789\u1799\u1780\u179a\u1794\u17b6\u1799\u1780\u17b6\u179a\u178e\u17cd";
-const LABEL_PDF = "\u1791\u17b6\u1789\u1799\u1780\u1787\u17b6 PDF";
-const LABEL_WORD = "\u1791\u17b6\u1789\u1799\u1780\u1787\u17b6 Word";
 const LABEL_EXCEL = "\u1791\u17b6\u1789\u1799\u1780\u1787\u17b6 Excel";
 
 const REPORT_TITLE_JOBS = "\u179a\u1794\u17b6\u1799\u1780\u17b6\u179a\u178e\u17cd\u1780\u178f\u17cb\u178f\u17d2\u179a\u17b6\u1780\u17b6\u179a\u1784\u17b6\u179a";
@@ -150,77 +148,6 @@ export default function DashboardPage() {
     XLSX.writeFile(wb, "tracker-report-" + jobFrom + "_to_" + jobTo + ".xlsx");
   }
 
-  async function exportPDF() {
-    const { default: jsPDF } = await import("jspdf");
-    await import("jspdf-autotable");
-    const doc = new jsPDF();
-    doc.setFontSize(14);
-    doc.text("Tracker Report " + jobFrom + " to " + jobTo, 14, 16);
-    const body = jobs.map((j) => [
-      j.name,
-      j.start_date,
-      j.end_date || "",
-      j.status === "done" ? "Done" : "Pending",
-      j.note || "",
-    ]);
-    doc.autoTable({
-      head: [["Name", "Start", "End", "Status", "Note"]],
-      body: body,
-      startY: 22,
-      styles: { fontSize: 9 },
-    });
-    doc.save("tracker-report-" + jobFrom + "_to_" + jobTo + ".pdf");
-  }
-
-  async function exportWord() {
-    const docxLib = await import("docx");
-    const { Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun, WidthType } = docxLib;
-
-    function cell(text) {
-      return new TableCell({
-        children: [new Paragraph({ children: [new TextRun(String(text || ""))] })],
-        width: { size: 20, type: WidthType.PERCENTAGE },
-      });
-    }
-
-    const headerRow = new TableRow({
-      children: [cell("Name"), cell("Start"), cell("End"), cell("Status"), cell("Note")],
-    });
-
-    const dataRows = jobs.map((j) =>
-      new TableRow({
-        children: [
-          cell(j.name),
-          cell(j.start_date),
-          cell(j.end_date),
-          cell(j.status === "done" ? "Done" : "Pending"),
-          cell(j.note),
-        ],
-      })
-    );
-
-    const doc = new Document({
-      sections: [
-        {
-          children: [
-            new Paragraph({ text: "Tracker Report " + jobFrom + " to " + jobTo }),
-            new Table({ rows: [headerRow, ...dataRows] }),
-          ],
-        },
-      ],
-    });
-
-    const blob = await Packer.toBlob(doc);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "tracker-report-" + jobFrom + "_to_" + jobTo + ".docx";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
   return (
     <div className="space-y-8">
       <div>
@@ -266,14 +193,8 @@ export default function DashboardPage() {
 
         <div className="card p-4 mt-4">
           <h3 className="font-display text-base mb-3">{LABEL_DOWNLOAD_REPORT}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button onClick={exportPDF} className="btn-secondary text-sm">
-              {"\u{1F4C4} " + LABEL_PDF}
-            </button>
-            <button onClick={exportWord} className="btn-secondary text-sm">
-              {"\u{1F4D8} " + LABEL_WORD}
-            </button>
-            <button onClick={exportExcel} className="btn-secondary text-sm">
+          <div className="flex">
+            <button onClick={exportExcel} className="btn-secondary text-sm w-full">
               {"\u{1F4CA} " + LABEL_EXCEL}
             </button>
           </div>
