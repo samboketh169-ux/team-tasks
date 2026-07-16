@@ -27,11 +27,13 @@ export default function Sidebar({ role, email }) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:flex-col md:fixed md:left-0 md:top-0 md:h-screen md:w-60 bg-gradient-to-b from-[#111723] to-[#0c1019] border-r border-[#202736] z-40">
-        <div className="px-5 py-6 border-b border-[#202736]">
+      <aside className="hidden md:flex md:flex-col md:fixed md:left-0 md:top-0 md:h-screen md:w-60 z-40"
+        style={{ background: "linear-gradient(180deg,#fffbea 0%,#fef3c7 60%,#fde68a 100%)", borderRight: "1px solid #f9d94e" }}>
+
+        <div className="px-5 py-6" style={{ borderBottom: "1px solid #f9d94e" }}>
           <div className="flex items-center gap-2">
             <span className="text-2xl">{"\u{1F4D2}"}</span>
-            <h1 className="font-display text-lg text-ink leading-tight">
+            <h1 className="font-display text-lg leading-tight" style={{ color: "#78350f" }}>
               {"\u1794\u1789\u17d2\u1787\u17b8\u1780\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179a\u1784\u17b6\u179a"}
               <br />
               {"\u1794\u17d2\u179a\u1785\u17b6\u17c6\u1790\u17d2\u1784\u17c3"}
@@ -46,11 +48,13 @@ export default function Sidebar({ role, email }) {
               <Link
                 key={t.href}
                 href={t.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
-                  active
-                    ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold shadow-glow"
-                    : "text-[#a7b0c2] hover:bg-[#171f2c] hover:text-ink"
-                }`}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+                style={active
+                  ? { background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "#fff", boxShadow: "0 4px 12px -2px rgba(217,119,6,0.45)" }
+                  : { color: "#92400e" }
+                }
+                onMouseEnter={e => { if (!active) e.currentTarget.style.background = "rgba(251,191,36,0.25)"; }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
               >
                 <span className="text-lg">{t.icon}</span>
                 <span>{t.label}</span>
@@ -59,31 +63,37 @@ export default function Sidebar({ role, email }) {
           })}
         </nav>
 
-        <div className="px-4 py-4 border-t border-[#202736]">
-          <div className="text-xs text-[#6c7689] truncate mb-2">{email}</div>
+        <div className="px-4 py-4" style={{ borderTop: "1px solid #f9d94e" }}>
+          <div className="text-xs truncate mb-2" style={{ color: "#b45309" }}>{email}</div>
           <button
             onClick={handleLogout}
-            className="w-full text-xs py-2 rounded-lg bg-[#171f2c] text-[#a7b0c2] hover:bg-[#1c2433]"
+            className="w-full text-xs py-2 rounded-lg transition-colors"
+            style={{ background: "#fde68a", color: "#78350f", border: "1px solid #f9d94e" }}
           >
             {"\u1785\u17b6\u1780\u1785\u17c1\u1789"}
           </button>
+          <div className="text-center mt-3" style={{ fontSize: "10px", color: "#b45309" }}>
+            {"\u00a9 \u179a\u1780\u17d2\u179f\u17b6\u179f\u17b7\u1791\u17d2\u1792\u17b7\u178a\u17c4\u1799 \u1780\u17c1\u178f \u179f\u17c6\u1794\u17bc\u179a"}
+          </div>
         </div>
       </aside>
 
       {/* Mobile top bar */}
       <div className="md:hidden">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 px-1">
           <div className="flex items-center gap-2">
             <span className="text-xl">{"\u{1F4D2}"}</span>
-            <h1 className="font-display text-lg text-ink">
+            <h1 className="font-display text-lg" style={{ color: "#78350f" }}>
               {"\u1794\u1789\u17d2\u1787\u17b8\u1780\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179a\u1784\u17b6\u179a\u1794\u17d2\u179a\u1785\u17b6\u17c6\u1790\u17d2\u1784\u17c3"}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handleLogout} className="btn-secondary text-xs py-2 px-3">
-              {"\u1785\u17b6\u1780\u1785\u17c1\u1789"}
-            </button>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="text-xs py-2 px-3 rounded-xl"
+            style={{ background: "#fde68a", color: "#78350f", border: "1px solid #f9d94e" }}
+          >
+            {"\u1785\u17b6\u1780\u1785\u17c1\u1789"}
+          </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 mb-2">
           {tabs.map((t) => {
@@ -92,17 +102,20 @@ export default function Sidebar({ role, email }) {
               <Link
                 key={t.href}
                 href={t.href}
-                className={`whitespace-nowrap flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl border ${
-                  active
-                    ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-emerald-500 font-semibold shadow-glow"
-                    : "bg-bgCard text-inkDim border-line"
-                }`}
+                className="whitespace-nowrap flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl border transition-all"
+                style={active
+                  ? { background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "#fff", borderColor: "#d97706" }
+                  : { background: "#fef3c7", color: "#92400e", borderColor: "#f9d94e" }
+                }
               >
                 <span>{t.icon}</span>
                 <span>{t.label}</span>
               </Link>
             );
           })}
+        </div>
+        <div className="text-center mb-2" style={{ fontSize: "11px", color: "#b45309" }}>
+          {"\u00a9 \u179a\u1780\u17d2\u179f\u17b6\u179f\u17b7\u1791\u17d2\u1792\u17b7\u178a\u17c4\u1799 \u1780\u17c1\u178f \u179f\u17c6\u1794\u17bc\u179a"}
         </div>
       </div>
     </>
